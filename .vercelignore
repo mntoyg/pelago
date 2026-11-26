@@ -1,0 +1,4 @@
+# Files that must not be uploaded by a CLI deploy of the static front end
+backend/
+.env
+.env.*

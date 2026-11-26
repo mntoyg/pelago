@@ -2,3 +2,10 @@
 .DS_Store
 Thumbs.db
 node_modules
+
+# environment and secret files (the repository is public)
+.env
+.env.*
+!.env.example
+*.pem
+*.key
