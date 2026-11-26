@@ -9,9 +9,8 @@ Items marked **PROPOSED** are the PM's suggestions and are not agreed scope unti
 | --- | --- |
 | Owner fork (`origin`) | https://github.com/mntoyg/pelago |
 | Teammate's original (`upstream`) | https://github.com/orapin67855-coder/pelago (we never push here) |
-| `main` | `fb66838` on 2026-11-26, equal to `origin/main` (fast-forwarded from `db85230` through the refactor `86519dd` and the first docs, each with the owner's go-ahead) |
-| `refactor/frontend-structure`, `docs/agent-guides` | both **merged into `main`** (the refactor branch is also kept on `origin`) |
-| `docs/readme-architecture` | `ARCHITECTURE.md`, the rewritten `README.md` and doc corrections (TASK-006); local, **not merged or pushed** until the owner says so |
+| `main` | equals `origin/main` (check with `git ls-remote origin main`); moves only with the owner's go-ahead. On 2026-11-26 it was fast-forwarded from `db85230` through the refactor, the agent guides, and `ARCHITECTURE.md` + `README.md` |
+| `refactor/frontend-structure`, `docs/agent-guides`, `docs/readme-architecture` | all **merged into `main`** (the refactor branch is also kept on `origin`) |
 | Stack | static HTML/CSS/vanilla ES modules, no build, deployed as-is on Vercel |
 | Data | all FSI values and spots are DEMO DATA; live inputs are NOAA ERDDAP, NASA GIBS, Esri, Open-Meteo |
 | Team focus | backend and AI (front end is kept stable) |
@@ -32,13 +31,12 @@ Items marked **PROPOSED** are the PM's suggestions and are not agreed scope unti
 | TASK-000 | Forked `orapin67855-coder/pelago` to `mntoyg/pelago`, cloned, set `origin` and `upstream` | MEASURED 2026-11-26: `git remote -v`, GitHub shows `isFork: true` |
 | TASK-001 | Fixed `index.html` asset paths (`css/styles.css`, `js/app.js` did not exist, so the page had no styles or script) | MEASURED 2026-11-26: after the fix `styles.css` and `app.js` return 200 and the page renders. Pushed as `db85230` |
 | TASK-002 | Front-end restructure by SWE 01: `app.js` split into `src/` ES modules, `styles.css` sectioned with CSS variables, README structure section. UI and features unchanged | Reviewed by the PM, see REVIEW-001. Merged into `main` at `86519dd` (fast-forward, pushed to `origin`, MEASURED 2026-11-26: `git ls-remote origin main` = `86519dd`) |
-| TASK-006 | `ARCHITECTURE.md` and a new `README.md` from the team's three reference documents (build guide 2026-11-21, function spec 2026-11-24, data sources 2026-11-25), plus a gap analysis of this prototype against them | MEASURED 2026-11-26: the PM read all three documents, including the two figures that have no text layer (system layers, 5-phase plan), and checked each statement about the prototype against the code. While doing so it found and fixed two wrong lines the PM had written earlier in `AGENTS.md` and `TASK.md`: the catch journal does not save anything (only price reports and pins are saved in `localStorage`). Local branch `docs/readme-architecture` |
+| TASK-006 | `ARCHITECTURE.md` and a new `README.md` from the team's three reference documents (build guide 2026-11-21, function spec 2026-11-24, data sources 2026-11-25), plus a gap analysis of this prototype against them | MEASURED 2026-11-26: the PM read all three documents, including the two figures that have no text layer (system layers, 5-phase plan), and checked each statement about the prototype against the code. While doing so it found and fixed two wrong lines the PM had written earlier in `AGENTS.md` and `TASK.md`: the catch journal does not save anything (only price reports and pins are saved in `localStorage`). Merged into `main` on 2026-11-26 |
 
 ## 4. Next up
 
 | ID | Task | Owner | Notes |
 | --- | --- | --- | --- |
-| TASK-003 | Decide whether to land `docs/readme-architecture` on `main` and push it to `origin` | Owner | One commit on top of `main`; see TASK-006 |
 | TASK-004 | Feature summary of the code (what each screen and module does, what is real vs demo) | PM | Largely covered now by `ARCHITECTURE.md` Part B (gap analysis). Confirm with the owner whether a separate summary is still wanted |
 | TASK-005 | Tell the teammate (upstream owner) about the path fix and the refactor before they keep building on `app.js` | Owner | MEASURED 2026-11-26 (`git fetch upstream`): `upstream/main` is still `5991d5b`, i.e. it has the broken `css/` / `js/` paths and the single-file `app.js`, and no commits we lack. If they edit `app.js` meanwhile, merging our `src/` layout will conflict |
 
