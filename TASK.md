@@ -23,7 +23,7 @@ Items marked **PROPOSED** are the PM's suggestions and are not agreed scope unti
 | PM | "PM" chat | active |
 | SWE 01 | "Pelago SWE 01" | idle; delivered TASK-002 |
 | Backend, AI (Claude seats) | done: contract/schema, ingest, FSI + back-test | idle |
-| Mask and pick seat | "Land/EEZ mask and pick step", started 2026-11-26 | **on hold** by the owner (2026-11-26); may hold partial work on its own branch |
+| Mask and pick seat | "Land/EEZ mask and pick step", started 2026-11-26 | **finished its build and stopped** (the owner's hold arrived after it had pushed). Branch `feature/mask-and-pick` = `3a357a2`, **not reviewed by the PM, not merged** (TASK-010) |
 | Codex (backend + AI) | one chair, work package in section 4.3 | assigned 2026-11-26, not started |
 
 ## 3. Done
@@ -37,6 +37,8 @@ Items marked **PROPOSED** are the PM's suggestions and are not agreed scope unti
 | TASK-007 | Backend API contract, draft PostGIS schema and service layout (design only) by the first backend seat | Reviewed by the PM, see REVIEW-002. Merged into `main` on 2026-11-26 (fast-forward from `feature/backend-contract` `93b82e0`). Root `.gitignore` now ignores `.env*` and key files; new `.vercelignore` keeps `backend/` and env files out of CLI deploys |
 | TASK-008 | Backend daily ingest for `th-chonburi-coast` by the second backend seat: dry run of the public sources, area config, one fetcher per source behind a swappable interface, aggregation onto the 0.05 degree grid, writer, 101 tests, mutation log | Reviewed by the PM, see REVIEW-003. Merged into `main` on 2026-11-26 (fast-forward from `feature/backend-ingest` `73d2f00`, with the PM's review notes) |
 | TASK-009 | FSI v1 on the server and the first back-test by the AI-engineer seat (Pelago AIE 01): `backend/fsi/`, `backend/backtest/`, strict `fsi` config validation, `.gitattributes` for the config files, 115 more tests, two mutation logs, one report | Reviewed by the PM, see REVIEW-004. Merged into `main` on 2026-11-26 (fast-forward from `feature/backtest` `5e829f5`, which contains `feature/fsi-v1` `baedcde`, plus the PM's review notes) |
+| TASK-010 | Land mask, EEZ mask, sea-state rule and pick step by the mask seat: `backend/masks/`, `backend/pick/`, `backend/compute/` (order mask, fsi, pick), `backend/legal.py`, `backend/seastate.py`, 7 test files, `backend/docs/mask-pick-mutation-log.md`, `land.geojson` (Natural Earth 1:10m, public domain, 3.6 KB, clipped) and `PROVENANCE.md` | **REPORTED, NOT reviewed, NOT merged.** Branch `feature/mask-and-pick` = `3a357a2` on `origin` (MEASURED 2026-11-26 by the PM: `git ls-remote origin` = `3a357a2`; 2 commits, 29 files, all under `backend/`). The PM has not run the tests or the mutation checks. The EEZ layer (Marine Regions, CC BY 4.0) is **not committed** and is fetched at build time by `backend/masks/fetch_eez.py`; the seat's note says the owner chose build-time download. The PM did not see that approval in this chat: the owner should confirm that the Natural Earth and Marine Regions downloads were approved |
+| TASK-011 | Codex work package written into this file (section 4.3) and the mask work put on hold, by the PM | MEASURED 2026-11-26: `main` = `origin/main` = `34ca635` |
 
 ## 4. Next up
 
@@ -65,7 +67,8 @@ Backend slice for the demo (plan 4.1, deliverables 1 to 7)
 - [x] Writer into `grid_daily` and `job_runs`; retry 3 times, fallback, carry-forward with the value's own age
 - [x] Ingest tests: 101 pass (reproduced by the PM against a real PostGIS); mutation checks reproduced by the PM (5 of 5 red)
 - [ ] Daily scheduler for the ingest (not built)
-- [ ] Land mask and EEZ mask, and the test "no recommended spot in a forbidden cell" (deliverable 3) — **ON HOLD by the owner, 2026-11-26**; resume later (the pick step writes `recommendations`, which the API in section 4.3 only reads)
+- [ ] Land mask and EEZ mask, and the test "no recommended spot in a forbidden cell" (deliverable 3) — **built by the mask seat on `feature/mask-and-pick` `3a357a2` (REPORTED, unreviewed); the owner put further work on hold on 2026-11-26.** Stays `[ ]` until the PM reproduces it (review in the next PM session, after the weekly reset)
+- [ ] Pick step (3 to 5 spots, 10 km apart, writes `recommendations`) — same branch, same status
 - [x] FSI v1 on the server: six sub-scores, confidence, per-cell explanation (deliverable 4); 216 tests pass (PM run), 10 PM mutations red
 - [ ] API (FastAPI) reading the database (deliverable 1)
 - [x] Back-test report (deliverable 5): coverage and sanity checks only, **not evidence of accuracy** (no catch logs, no Global Fishing Watch token); 41 of 52 dates
@@ -142,8 +145,9 @@ admin dashboard, official-warning feed, other countries. The data screen keeps s
 ### 4.3 Codex work package: backend + AI (assigned by the owner, 2026-11-26)
 
 One Codex chair, items in order, **one branch per item, cut from `main`**, pushed to `origin` with the remote named.
-The mask and pick work is on hold (section 2), so Codex does **not** touch `backend/masks/`, `backend/legal.py`,
-the pick step or the `recommendations` writer. Everything here is the PM's brief; read `AGENTS.md`, `CODEX.md`,
+The mask and pick work is built but unreviewed on `feature/mask-and-pick` (section 2, TASK-010) and is on hold, so
+Codex does **not** touch `backend/masks/`, `backend/legal.py`, `backend/pick/`, `backend/compute/`, the pick step or
+the `recommendations` writer. Everything here is the PM's brief; read `AGENTS.md`, `CODEX.md`,
 `backend/README.md` and `backend/API_CONTRACT.md` first.
 
 How the boxes work:
@@ -194,7 +198,7 @@ Rules for every item:
 workflow file are owner actions, so no workflow file and no secret are committed)
 
 - [ ] `python -m backend.jobs.run_daily --area th-chonburi-coast [--date YYYY-MM-DD]` runs fetch (ingest) then FSI, writes a `job_runs` row per step, is idempotent (a second run changes nothing), and exits non-zero if any step failed
-- [ ] The mask and pick steps are listed as a named hook that is reported `skipped: not built` in `job_runs` (so the mask seat can plug in later without changing the order)
+- [ ] The mask and pick steps are a named hook. While `feature/mask-and-pick` is **not** on `main` the hook is reported `skipped: not built` in `job_runs`. Once the PM has merged that branch (check `git log origin/main` for `backend/compute/`), the hook calls `backend/compute/pipeline.py` instead of skipping, and a test shows both paths. Do not copy or re-implement code from that branch before it is on `main`
 - [ ] A failed step stops the later steps, leaves no half-written `recommendations` row, and the next run recovers; tested with an injected failure and a mutation check
 - [ ] `backend/README.md` explains how to run it from a host's cron or scheduler (no host chosen yet, open question 2)
 
@@ -205,7 +209,36 @@ workflow file are owner actions, so no workflow file and no secret are committed
 - [ ] Open question 13: with the existing back-test harness, measure week-to-week agreement for (a) today's weights, (b) a lower front weight, (c) the front smoothed over several days; same metrics as REVIEW-004 (Spearman, top-20% overlap vs random); the default weights in the config are **not** changed, the owner decides
 - [ ] The report states what each result does and does not show; chlorophyll-empty behaviour (open question 12) is shown unchanged
 
-Out of scope for Codex now: land/EEZ mask, pick step, front end, deployment accounts, Supabase project creation.
+Out of scope for Codex now: land/EEZ mask, pick step (they exist on the unreviewed branch `feature/mask-and-pick`; the PM reviews and merges them), front end, deployment accounts, Supabase project creation.
+
+### 4.4 Handoff, end of 2026-11-26 (what Claude did today, and what Codex continues)
+
+Done today by Claude seats (the PM chat and its seats), all on `main` unless stated:
+
+- Front-end restructure, agent guides, `ARCHITECTURE.md`/`README.md`, API contract and schema, ingest, FSI v1 and
+  back-test: merged earlier today and reviewed (TASK-002, 006 to 009; REVIEW-001 to 004).
+- New PM chat: confirmed state (`main` = `origin/main` = `a861e8d`), wrote section 4.3 and recorded the mask hold
+  (`34ca635`, pushed to `origin/main`).
+- Mask seat: built the mask and pick step on `feature/mask-and-pick` `3a357a2` before the hold; not reviewed (TASK-010).
+
+State to start from:
+
+- `main` holds everything reviewed; 216 backend tests pass on it (PM run, REVIEW-004).
+- `feature/mask-and-pick` is the only unmerged backend work. Codex must not merge it, rebase onto it or branch from it.
+- The weekly Claude meter was 70% at the end of the day and resets Sat 2026-11-28 10:00 Thai time.
+  Codex has its own meter; read it before each item.
+- Owner decisions still open (section 6): 1, 2, 3, 12, 13, 14. Owner actions still open: Supabase project and roles,
+  FastAPI host account, optional Global Fishing Watch token, confirm the dataset downloads of the mask seat.
+
+Order for Codex: CX-1, then CX-2, then CX-3, then CX-4 (CX-4 may go before CX-3 if the CX-3 hook question is still
+waiting for the PM). After each item: tick your boxes (section 4.3 rules), push your branch to `origin`, print
+`git ls-remote origin <branch>`, and send the report (Thai, `AGENTS.md` section 8) to the owner. The PM reviews by
+reproducing; nothing goes to `main` without the owner's word.
+
+Next for the Claude PM (not Codex): review `feature/mask-and-pick` after the weekly reset (suite on real PostGIS,
+mutation checks on copies, check the provenance and licence note against the live pages), then merge on the owner's
+word; then the front-end adapter (Pelago SWE 01, decision D9) once CX-2 is merged; then a reviewer seat for the red-team
+pass; then the demo script.
 
 ### 4.2 Other next steps
 
