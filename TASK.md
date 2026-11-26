@@ -32,6 +32,7 @@ Items marked **PROPOSED** are the PM's suggestions and are not agreed scope unti
 | TASK-001 | Fixed `index.html` asset paths (`css/styles.css`, `js/app.js` did not exist, so the page had no styles or script) | MEASURED 2026-11-26: after the fix `styles.css` and `app.js` return 200 and the page renders. Pushed as `db85230` |
 | TASK-002 | Front-end restructure by SWE 01: `app.js` split into `src/` ES modules, `styles.css` sectioned with CSS variables, README structure section. UI and features unchanged | Reviewed by the PM, see REVIEW-001. Merged into `main` at `86519dd` (fast-forward, pushed to `origin`, MEASURED 2026-11-26: `git ls-remote origin main` = `86519dd`) |
 | TASK-006 | `ARCHITECTURE.md` and a new `README.md` from the team's three reference documents (build guide 2026-11-21, function spec 2026-11-24, data sources 2026-11-25), plus a gap analysis of this prototype against them | MEASURED 2026-11-26: the PM read all three documents, including the two figures that have no text layer (system layers, 5-phase plan), and checked each statement about the prototype against the code. While doing so it found and fixed two wrong lines the PM had written earlier in `AGENTS.md` and `TASK.md`: the catch journal does not save anything (only price reports and pins are saved in `localStorage`). Merged into `main` on 2026-11-26 |
+| TASK-007 | Backend API contract, draft PostGIS schema and service layout (design only) by the first backend seat | Reviewed by the PM, see REVIEW-002. Merged into `main` on 2026-11-26 (fast-forward from `feature/backend-contract` `93b82e0`). Root `.gitignore` now ignores `.env*` and key files; new `.vercelignore` keeps `backend/` and env files out of CLI deploys |
 
 ## 4. Next up
 
@@ -145,9 +146,16 @@ Front end and quality:
    show no spots for the area. Which one for the demo?
 4. Demo area: the Chonburi coast (proposed), or another?
 5. Global Fishing Watch token for the back-test: will the owner register one (internal use only)?
-6. Repository layout for the backend: a `backend/` folder in this repository (PM's proposal; Vercel keeps serving the
-   static front end), or a separate repository.
+6. ~~Repository layout for the backend~~: `backend/` in this repository, as proposed; merged 2026-11-26 with the contract. Tell the PM if you want a separate repository instead.
 7. Tell the teammate who owns `upstream` (TASK-005) before they edit `app.js`.
+8. **Spot spacing.** The guide's "at least 5 km apart" does nothing on the 0.05 degree grid (cell centres are already
+   5.4 km apart), so the top 5 spots may be adjacent cells. The backend seat and the PM recommend 10 km in config.
+9. **Front-end fallback when the API is down.** Show today's in-browser demo path clearly labelled "demo, not filtered"
+   (the seat's default, only on a network error or a 5xx, never on a 200), or show nothing? The in-browser path has no
+   legal, land or sea-state filter.
+10. **Boat classes this week:** `small` only, or `small` and `medium` (the guide gives thresholds for both; the maximum
+    range for `medium` is not given).
+11. Other backend decisions with defaults are listed in `backend/README.md` section 5 (15 items); silence means the default.
 
 ## 7. Review log
 
@@ -187,3 +195,35 @@ unverified), the `sea`, `go`, `fish`, `data`, `price`, `bloom`, `pins` screens i
 inputs were compared), and a real Vercel deployment.
 
 `QA: 2 findings (C/H/M/L = 0/0/0/2) - 2 reproduced - not tested: phone viewport, canvas pixels, pointer input, GPS/speech, GIBS tiles, Vercel deploy`
+
+### REVIEW-002 — `feature/backend-contract` (`19cc7b6..93b82e0`), reviewed 2026-11-26 by the PM
+
+Verdict: **approve for merge** as a design. Nothing is implemented, deployed or executed. Method: the PM exported the
+branch with `git archive`, read all four files, and reproduced the arithmetic claims; the seat's report was not relied on.
+
+| Check | Result | Label |
+| --- | --- | --- |
+| Scope: only new files under `backend/`; no `src/`, `index.html`, `styles.css` or root doc touched | confirmed (`git diff --name-only`) | MEASURED 2026-11-26 |
+| Secrets scan of the four files | none; the matches are rules about secrets | MEASURED 2026-11-26 |
+| Cell-id scheme `pelago-cell-v1`: all 9 test vectors in `db/schema.sql`, recomputed independently (Decimal, half-up) | all reproduced, including the edge, negative and out-of-range cases | MEASURED 2026-11-26 (Python only; the SQL function was not run) |
+| Claim: float `floor((lat+90)/0.05)` is wrong on cell edges | reproduced: `(12.3+90)/0.05 = 2045.9999999999998`; 170 of 3000 latitudes (0.00 to 29.99) land in the wrong row | MEASURED 2026-11-26 |
+| Claim: the "5 km apart" spot rule does nothing on a 0.05 degree grid | reproduced: neighbouring centres are 5.57 km (lat) and 5.43 km (lon) apart at 12.5 N | MEASURED 2026-11-26 |
+| Contract vs `schema.sql` vs the front end (`spot.fsi`, `spot.signal`) and ARCHITECTURE.md A4/A5 | consistent on reading; field-to-column table covers every contract field | READ 2026-11-26 |
+| `schema.sql` executed on PostgreSQL/PostGIS | **not run** by the seat or the PM (no database; Docker daemon off; pulling an image needs the owner's permission) | not tested |
+
+Findings:
+
+- **F-3 [Low] The database cannot stop a recommendation that points at an unscored cell.** `fsi_daily` forces `fsi IS NULL`
+  exactly when `s_sst IS NULL`, and `recommendations` has a foreign key to the `fsi_daily` row, but nothing forces that row's
+  `fsi` to be non-null, and `recommendations.fsi` is a separate copy. "No SST, no spot" is therefore enforced by the
+  application only on that path, although `API_CONTRACT.md` section 9 reads as if the database covered it. Fix: add a
+  generated `scored` column to `fsi_daily` and include it in the foreign key. Not fixed.
+- **F-4 [Medium, fixed in this merge] `.env` was not ignored** in a public repository whose backend will need one
+  (reported by the seat as F1, confirmed by the PM against `main`). Fixed with the root `.gitignore` rules, tested with
+  `git check-ignore` (`.env`, `.env.local`, `backend/.env`, `*.pem` ignored; `.env.example` not ignored).
+- **F-5 [Low, fixed in this merge] `vercel.json` serves the repository as static files**, so `backend/` would be published
+  on the front end's domain by a CLI deploy. Fixed with `.vercelignore`. UNVERIFIED which deploy method the owner uses.
+- The seat's own findings R1–R12 (design risks) and 15 owner decisions are in `backend/API_CONTRACT.md` section 11 and
+  `backend/README.md` section 5. The most urgent ones are items 8 to 10 in section 6.
+
+`QA: 3 findings (C/H/M/L = 0/0/1/2) - 3 reproduced or confirmed by reading - not tested: schema execution on PostgreSQL/PostGIS, upstream datasets, Supabase behaviour`
