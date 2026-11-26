@@ -129,6 +129,7 @@ def test_carry_forward_reads_yesterday_from_the_database(db, make_area):
         == datetime(2026, 11, 24, 9, 0, tzinfo=UTC)
     assert one(db, "SELECT count(*) FROM pelago.grid_daily WHERE run_date=%s AND wave_window_max_m IS NOT NULL", RUN) == 0
     assert one(db, "SELECT count(*) FROM pelago.job_runs WHERE run_date=%s AND status='partial' AND error_code='timeout'", RUN) == 3
+    assert w.latest_before(area.area_id, RUN, "wave_wind") == []            # the writer refuses to hand out a wave/wind history
 
 
 def test_the_database_itself_rejects_what_the_ingest_must_never_send(db, make_area):
@@ -143,6 +144,7 @@ def test_the_database_itself_rejects_what_the_ingest_must_never_send(db, make_ar
     with pytest.raises(psycopg.errors.CheckViolation):          # a value without its observation time
         db.execute("INSERT INTO pelago.grid_daily (region_id, run_date, cell_id, sst_c) VALUES (%s,%s,%s,29)",
                    (area.area_id, RUN, area.cell_ids()[0]))
-    with pytest.raises(psycopg.errors.CheckViolation):          # a URL is not a valid error_code
-        w.finish_run(run_id, "failed", 0, None, "http://x", {})
+    w.finish_run(run_id, "failed", 0, None, "http://x?token=abc", {})      # the writer replaces a non-code by 'error'
+    assert one(db, "SELECT error_code FROM pelago.job_runs WHERE run_id=%s", run_id) == "error"
+    with pytest.raises(psycopg.errors.CheckViolation):          # and the database refuses a URL as an error_code anyway
         db.execute("UPDATE pelago.job_runs SET error_code = 'http://x'")

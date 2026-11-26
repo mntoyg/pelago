@@ -242,3 +242,17 @@ def test_fetch_error_code_is_sanitised():
     assert FetchError("https://host/?token=abc").code == "error"
     assert FetchError("http_503").code == "http_503" and FetchError("http_503").retryable
     assert not FetchError("empty_grid").retryable
+
+
+def test_oversized_response_is_cut_off(monkeypatch):
+    class Resp:
+        status_code = 200
+        def __enter__(self): return self
+        def __exit__(self, *a): return False
+        def iter_content(self, n):
+            while True:
+                yield b"x" * 1_000_000
+    monkeypatch.setattr(requests, "get", lambda *a, **k: Resp())
+    with pytest.raises(FetchError) as e:
+        http_get("https://example.test/x", 1)
+    assert e.value.code == "too_large"

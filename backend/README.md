@@ -253,3 +253,23 @@ Docs consulted: [PostGIS on Supabase](https://supabase.com/docs/guides/database/
    go red by removing its guard before trusting it (`AGENTS.md` section 7, rule 5).
 3. One dry run of each fetcher on the bbox with output to a scratch folder; record dataset, axis order, fill values
    and coverage near the coast (this settles R5).
+
+## 9. Ingest as built (2026-11-26, branch `feature/backend-ingest`)
+
+Only the daily ingest exists so far (`ingest/`, `config/areas/th-chonburi-coast.json`, `tests/`). The layout in section 2 is
+still the target for the rest. Measured facts about the sources: [`docs/ingest-dry-run.md`](docs/ingest-dry-run.md); guard
+tests proven able to fail: [`docs/ingest-mutation-log.md`](docs/ingest-mutation-log.md).
+
+```
+cd backend
+python -m venv ../.venv && ../.venv/Scripts/python -m pip install -r requirements.txt   # Windows path; use bin/ elsewhere
+set DATABASE_URL_INGEST=<write-role URL, from the environment only>
+../.venv/Scripts/python -m ingest.run --area th-chonburi-coast --date today              # or --date YYYY-MM-DD (area-local)
+../.venv/Scripts/python -m pytest -q                                                      # DB tests need PELAGO_TEST_ADMIN_URL
+```
+
+Differences from the design in sections 2 to 4: one module `open_meteo_marine.py` reads both Open-Meteo endpoints (waves from
+Marine, wind from Forecast); the chlorophyll chain has a NOAA-20 fallback (`erddap_viirs_n20_chl`, owner may remove it);
+the ingest also stores `sst_grad_c_per_km` because only the ingest sees the full-resolution SST; the `ingest` block in the area
+file holds fetch-only settings (the API's config loader must accept or ignore it). Carry-forward (latest stored value with its own
+age) applies to SST, chlorophyll and depth, never to wave/wind. Not built here: API, FSI, masks, scheduling.
