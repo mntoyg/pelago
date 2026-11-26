@@ -177,10 +177,10 @@ Rules for every item:
 **CX-1 Backend hygiene** (branch `fix/backend-hygiene`; files: `.gitignore`, `backend/ingest/fetchers/`,
 `backend/API_CONTRACT.md`, `backend/README.md`, `backend/config/`; small, do it first)
 
-- [ ] Root `.gitignore` ignores `.venv/`, `__pycache__/`, `*.pyc`, `.pytest_cache/` (F-8); `git status` is clean after a test run
-- [ ] Fetchers use the canonical ERDDAP dataset ids, and `http_get` in `backend/ingest/fetchers/base.py` no longer follows redirects blindly: only `https`, only the hosts already named in the area config, at most 2 hops; a test sends a redirect to another host and it is refused for that reason (F-9)
-- [ ] The two lines that say the owner "may remove" the NOAA-20 fallback now say it is kept (D11)
-- [ ] `wx_issued_at` is reworded in the contract and README as the retrieval time, not a forecast issue time (F-10)
+- [x] Root `.gitignore` ignores `.venv/`, `__pycache__/`, `*.pyc`, `.pytest_cache/` (F-8); `git status` is clean after a test run (9a7768f, 2026-11-26)
+- [x] Fetchers use the canonical ERDDAP dataset ids, and `http_get` in `backend/ingest/fetchers/base.py` no longer follows redirects blindly: only `https`, only the hosts already named in the area config, at most 2 hops; a test sends a redirect to another host and it is refused for that reason (F-9) (9a7768f, 2026-11-26)
+- [x] The two lines that say the owner "may remove" the NOAA-20 fallback now say it is kept (D11) (9a7768f, 2026-11-26)
+- [x] `wx_issued_at` is reworded in the contract and README as the retrieval time, not a forecast issue time (F-10) (9a7768f, 2026-11-26)
 
 **CX-2 FastAPI read API** (branch `feature/backend-api`; new folder `backend/api/`; the contract is the spec, section
 12 of `backend/API_CONTRACT.md` lists the tests; asks the owner once for `fastapi`, `uvicorn`, `httpx` from PyPI)
