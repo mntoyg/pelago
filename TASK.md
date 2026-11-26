@@ -34,6 +34,7 @@ Items marked **PROPOSED** are the PM's suggestions and are not agreed scope unti
 | TASK-006 | `ARCHITECTURE.md` and a new `README.md` from the team's three reference documents (build guide 2026-11-21, function spec 2026-11-24, data sources 2026-11-25), plus a gap analysis of this prototype against them | MEASURED 2026-11-26: the PM read all three documents, including the two figures that have no text layer (system layers, 5-phase plan), and checked each statement about the prototype against the code. While doing so it found and fixed two wrong lines the PM had written earlier in `AGENTS.md` and `TASK.md`: the catch journal does not save anything (only price reports and pins are saved in `localStorage`). Merged into `main` on 2026-11-26 |
 | TASK-007 | Backend API contract, draft PostGIS schema and service layout (design only) by the first backend seat | Reviewed by the PM, see REVIEW-002. Merged into `main` on 2026-11-26 (fast-forward from `feature/backend-contract` `93b82e0`). Root `.gitignore` now ignores `.env*` and key files; new `.vercelignore` keeps `backend/` and env files out of CLI deploys |
 | TASK-008 | Backend daily ingest for `th-chonburi-coast` by the second backend seat: dry run of the public sources, area config, one fetcher per source behind a swappable interface, aggregation onto the 0.05 degree grid, writer, 101 tests, mutation log | Reviewed by the PM, see REVIEW-003. Merged into `main` on 2026-11-26 (fast-forward from `feature/backend-ingest` `73d2f00`, with the PM's review notes) |
+| TASK-009 | FSI v1 on the server and the first back-test by the AI-engineer seat (Pelago AIE 01): `backend/fsi/`, `backend/backtest/`, strict `fsi` config validation, `.gitattributes` for the config files, 115 more tests, two mutation logs, one report | Reviewed by the PM, see REVIEW-004. Branches `feature/fsi-v1` at `baedcde` and `feature/backtest` at `5e829f5` (contains fsi-v1); merge pending the owner's go-ahead |
 
 ## 4. Next up
 
@@ -48,6 +49,7 @@ Foundations
 - [x] Agent guides and this board (`AGENTS.md`, `CLAUDE.md`, `CODEX.md`, `TASK.md`)
 - [x] `ARCHITECTURE.md` and `README.md` from the three reference documents (TASK-006)
 - [x] Owner decisions D1 to D11 recorded (section 6)
+- [x] PM answers to the AI-engineer seat's design note (9 points and 3 additions) recorded in REVIEW-004
 - [x] Root `.gitignore` ignores `.env*` and key files; `.vercelignore` added
 
 Backend slice for the demo (plan 4.1, deliverables 1 to 7)
@@ -62,9 +64,9 @@ Backend slice for the demo (plan 4.1, deliverables 1 to 7)
 - [x] Ingest tests: 101 pass (reproduced by the PM against a real PostGIS); mutation checks reproduced by the PM (5 of 5 red)
 - [ ] Daily scheduler for the ingest (not built)
 - [ ] Land mask and EEZ mask, and the test "no recommended spot in a forbidden cell" (deliverable 3)
-- [ ] FSI v1 on the server: six sub-scores, confidence, explanation (deliverable 4)
+- [x] FSI v1 on the server: six sub-scores, confidence, per-cell explanation (deliverable 4); 216 tests pass (PM run), 10 PM mutations red
 - [ ] API (FastAPI) reading the database (deliverable 1)
-- [ ] Back-test report (deliverable 5)
+- [x] Back-test report (deliverable 5): coverage and sanity checks only, **not evidence of accuracy** (no catch logs, no Global Fishing Watch token); 41 of 52 dates
 - [ ] Front end reads the API, labelled demo fallback (D9) (deliverable 6)
 - [ ] Red-team review pass of the filter and the API (deliverable 7)
 - [ ] Deployment: Supabase project and a FastAPI host
@@ -83,10 +85,13 @@ Owner actions and decisions
 Small fixes found in review, not yet done
 
 - [ ] Root `.gitignore`: add `.venv/`, `__pycache__/`, `*.pyc`, `.pytest_cache/` (F-8)
-- [ ] `.gitattributes` with `eol=lf` for `backend/config/**/*.json`, or hash a canonical JSON, so `config_sha256` is the same on every machine (F-7)
+- [x] `.gitattributes` with `eol=lf` for `backend/config/**/*.json` so `config_sha256` is the same on every machine (F-7; done in `feature/fsi-v1`, new hash `46e87256a902eb47` confirmed by the PM)
 - [ ] Use the canonical ERDDAP dataset ids and do not follow redirects blindly (F-9)
 - [ ] Fix the two lines that still say "owner may remove it" about the NOAA-20 fallback (D11)
 - [ ] Reword `wx_issued_at` in the contract: it is the retrieval time, not a forecast issue time (F-10)
+- [ ] Verify the temperature-front input (SST gradient) on one real SST field, because it drives the ranking and was only checked on a synthetic field (F-16)
+- [ ] Decide whether the week-to-week change of the spots is acceptable for the demo (open question 13)
+- [ ] Optional: more request budget for the 11 missing back-test dates and a daily sample (open question 14)
 
 ### 4.1 One-week plan (PROPOSED, for the owner's approval)
 
@@ -216,7 +221,14 @@ Front end and quality:
     filled only 12 of 200 cells (6%) even with the NOAA-20 fallback. The FSI then runs mostly on temperature, front, depth and
     moon, and confidence is low. Options for the demo: (a) show it honestly with the low confidence (PM default), (b) also run
     the demo on a recent date that has better chlorophyll coverage (the dry run found 2026-11-08 and 2026-11-11 had about 80% of
-    water cells), labelled as a past date. Which one?
+    water cells), labelled as a past date. Which one? New evidence (back-test): removing chlorophyll entirely changes the ranking little
+    (Spearman 0.95, top 20% keeps 89%), so showing it honestly with low confidence costs the demo little.
+13. **Week-to-week stability of the spots.** The back-test (REVIEW-004) found that maps one week apart agree little (mean Spearman 0.19;
+    the top 20% of cells overlaps 25% against 20% for a random map) and that the temperature front causes most of it. Whether spots may
+    move that much is a product decision. Options: accept it and say so in the demo (PM default), lower the front weight, or smooth
+    the front over several days. The front itself is still unverified on real data (F-16).
+14. **More back-test requests?** The 250-request cap left 11 of 52 dates unfetched and no daily sample. Another budget is optional;
+    it adds load on the public NOAA server and meter use. Default: no.
 
 ## 7. Review log
 
@@ -317,3 +329,43 @@ Findings (the seat's list, re-numbered, plus the PM's):
 Not tested: Supabase itself, a scheduler, the API, the FSI, the masks, Open-Meteo for dates older than about 6 days, the NOAA-20 fallback on a clear-sky day, the physical correctness of the SST front computation on real data (the seat compared it only with a synthetic linear field), the attribution wording of each source.
 
 `QA: 6 findings (C/H/M/L = 0/0/1/5) + 2 info - 3 reproduced by the PM (line-ending hash, .venv not ignored, redirects) and 2 confirmed live (chlorophyll dates, licence text) - not tested: end-to-end ingest re-run, Supabase, scheduler, API/FSI/masks`
+
+### REVIEW-004 — `feature/fsi-v1` (`7651324..baedcde`) and `feature/backtest` (`..5e829f5`), reviewed 2026-11-26 by the PM
+
+Verdict: **approve for merge** (both branches, `feature/backtest` contains `feature/fsi-v1`). Process: the seat first sent a design note; the PM checked its
+claims against the repository, answered 9 points and added 3 (front percentile over water cells only; "future" measured against the end of the local
+run date; no `chl_8day_fresh` key); the seat then built it. Review method: the PM exported the branch with `git archive`, ran the whole suite on its own
+PostGIS container, mutated copies of the code, and re-hashed the config. The seat's report was not relied on where a check was possible.
+
+| Check | Result | Label |
+| --- | --- | --- |
+| Scope: 26 files, all under `backend/` except a new root `.gitattributes` (2 lines, `backend/config/**/*.json text eol=lf`); `requirements.txt` unchanged; no `src/`, `index.html`, `styles.css`, `TASK.md` touched | confirmed | MEASURED 2026-11-26 |
+| `pytest` with database tests forced on, fresh `postgis/postgis:16-3.7` container | **216 passed** (101 before this work + 115 new) | MEASURED 2026-11-26 |
+| PM's own mutation checks on copies (10): no-SST scored as 0; trial area reaches `high`; future-dated observation accepted; bloom cut removed; unknown verification level fails open; front percentile over all cells; freshness missing from the numerator; percentile ties removed; depth score unclipped; recommendation pre-check removed | all 10 **red**; control passed 216; exported files' hashes unchanged | MEASURED 2026-11-26 |
+| Formulas and rules read against API_CONTRACT 4.5/4.6, ARCHITECTURE A4/A5 and the prototype (`min(d/10,(200-d)/120)`, `1-0.6*illumination`, bloom cut, freshness shape) | consistent; every weight and threshold comes from the validated `fsi` config; division-by-zero cases are refused by `validate_fsi` | READ 2026-11-26 |
+| `config_sha256` of `th-chonburi-coast.json` after the key additions | `46e87256a902eb47` (LF), as reported; the committed blob has no CRLF | MEASURED 2026-11-26 |
+| Contract change `baedcde` (`*_invalid` codes) | one line, additive only | MEASURED 2026-11-26 |
+| Network use in `backtest/`, `fsi/` | only ERDDAP through the ingest fetchers, request cap and 2 s pause in code, cache folder inside the repo is refused; no Open-Meteo, no Global Fishing Watch | READ 2026-11-26 |
+| Secrets scan of the two branches' files | none | READ 2026-11-26 |
+| The seat's own mutation logs (FSI 28 points, back-test 10 points, all red) and its live back-test run (250 requests, 41 of 52 dates) | **not re-run by the PM**; the numbers below come from the seat's report and `docs/fsi-backtest-report.md` (the cache of upstream values is in the seat's private scratch area and the PM did not search for it) | REPORTED |
+
+What the back-test says (REPORTED by the seat, plain reading; **none of it is evidence of accuracy**):
+
+- All 10 direction-of-response checks pass. FSI is compressed: median 73.5, p10 61, p90 84.
+- The temperature front drives the ranking (spread 7.3 points; switching its weight off drops the rank correlation to 0.36) and is the main source of week-to-week change (stability 0.19 with it, 0.47 without it).
+- Maps one week apart agree little: mean Spearman 0.19, top 20% overlap 25% (a random map would give 20%).
+- Chlorophyll removed completely (today's demo situation): Spearman 0.95 with the full ranking, top 20% keeps 89%.
+- Confidence `medium` for 26% of cells and `high` for none (the area is `trial`).
+
+Findings:
+
+- **F-14 [Low] A missing `regions` row cannot be recorded.** `job_runs` has a foreign key to `regions`, so `no_region` is only logged and returned as an exit code (`fsi/pipeline.py` lines 36 to 39). Read by the PM; the seat reproduced it.
+- **F-15 [Low] Ranges live in code, not config.** The plausible value ranges (SST -2..40, chlorophyll 0..1000, depth 0..12000, gradient 0..100) are constants in `fsi/model.py` that mirror the schema CHECKs, and the rule `weights.sst > 0` lives in `fsi/config.py` rather than in `validate_fsi`. Acceptable now.
+- **F-16 [Medium] The ranking rests on an unverified input.** The front (SST gradient) was checked only against a synthetic linear field (REVIEW-003) and now carries the largest share of the ranking and of its instability. Check it on one real SST field before the demo, and decide open question 13.
+- **F-17 [Info] The spots can change a lot from week to week** (see above); a product question, not a defect.
+- **F-18 [Info] The back-test is partial:** 41 of 52 dates (the 250-request cap stopped it before 2026-04-08; one date failed with `http_503` and was left out), no daily sample, nothing on hit rate with real catch data.
+- **F-19 [Info] Handoff to the mask/pick seat:** `recommendations.fsi` and `.confidence` are copies; when the FSI changes, the pick step must run again (the FSI job fails with `recommendation_conflict` instead of leaving a stale copy). The seat showed that PostgreSQL itself blocks making a picked cell unscored (`scored` foreign key; the PM's earlier schema test showed the same mechanism for unscored cells).
+
+Not tested: Supabase, a scheduler, the API, the land and EEZ masks (cells that ETOPO treats as water but are land are still scored), periods longer than 12 months, the 11 missing dates, daily results, `hit_rate` on real data, the seat's back-test cache and live run.
+
+`QA: 4 findings (C/H/M/L = 0/0/1/3) + 3 info - 216 tests and 10 mutations reproduced by the PM, config hash re-measured - not tested: Supabase, scheduler, API, masks, the seat's live back-test run`
