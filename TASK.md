@@ -9,9 +9,9 @@ Items marked **PROPOSED** are the PM's suggestions and are not agreed scope unti
 | --- | --- |
 | Owner fork (`origin`) | https://github.com/mntoyg/pelago |
 | Teammate's original (`upstream`) | https://github.com/orapin67855-coder/pelago (we never push here) |
-| `main` | `86519dd` (fast-forwarded from `db85230` on 2026-11-26 with the owner's go-ahead; `origin/main` has the same SHA) |
-| `refactor/frontend-structure` | `86519dd`, **merged into `main`** (branch kept on `origin`) |
-| `docs/agent-guides` | this file set; local, **not pushed** until the owner says so |
+| `main` | `fb66838` on 2026-11-26, equal to `origin/main` (fast-forwarded from `db85230` through the refactor `86519dd` and the first docs, each with the owner's go-ahead) |
+| `refactor/frontend-structure`, `docs/agent-guides` | both **merged into `main`** (the refactor branch is also kept on `origin`) |
+| `docs/readme-architecture` | `ARCHITECTURE.md`, the rewritten `README.md` and doc corrections (TASK-006); local, **not merged or pushed** until the owner says so |
 | Stack | static HTML/CSS/vanilla ES modules, no build, deployed as-is on Vercel |
 | Data | all FSI values and spots are DEMO DATA; live inputs are NOAA ERDDAP, NASA GIBS, Esri, Open-Meteo |
 | Team focus | backend and AI (front end is kept stable) |
@@ -32,13 +32,14 @@ Items marked **PROPOSED** are the PM's suggestions and are not agreed scope unti
 | TASK-000 | Forked `orapin67855-coder/pelago` to `mntoyg/pelago`, cloned, set `origin` and `upstream` | MEASURED 2026-11-26: `git remote -v`, GitHub shows `isFork: true` |
 | TASK-001 | Fixed `index.html` asset paths (`css/styles.css`, `js/app.js` did not exist, so the page had no styles or script) | MEASURED 2026-11-26: after the fix `styles.css` and `app.js` return 200 and the page renders. Pushed as `db85230` |
 | TASK-002 | Front-end restructure by SWE 01: `app.js` split into `src/` ES modules, `styles.css` sectioned with CSS variables, README structure section. UI and features unchanged | Reviewed by the PM, see REVIEW-001. Merged into `main` at `86519dd` (fast-forward, pushed to `origin`, MEASURED 2026-11-26: `git ls-remote origin main` = `86519dd`) |
+| TASK-006 | `ARCHITECTURE.md` and a new `README.md` from the team's three reference documents (build guide 2026-11-21, function spec 2026-11-24, data sources 2026-11-25), plus a gap analysis of this prototype against them | MEASURED 2026-11-26: the PM read all three documents, including the two figures that have no text layer (system layers, 5-phase plan), and checked each statement about the prototype against the code. While doing so it found and fixed two wrong lines the PM had written earlier in `AGENTS.md` and `TASK.md`: the catch journal does not save anything (only price reports and pins are saved in `localStorage`). Local branch `docs/readme-architecture` |
 
 ## 4. Next up
 
 | ID | Task | Owner | Notes |
 | --- | --- | --- | --- |
-| TASK-003 | Decide whether to land `docs/agent-guides` on `main` and push it to `origin` | Owner | The refactor is already merged. The docs branch is local only and sits on top of `main` (one commit) |
-| TASK-004 | Feature summary of the code (what each screen and module does, what is real vs demo) | PM | The owner asked for this before the refactor; it is easier and more accurate on the new `src/` layout. Pending |
+| TASK-003 | Decide whether to land `docs/readme-architecture` on `main` and push it to `origin` | Owner | One commit on top of `main`; see TASK-006 |
+| TASK-004 | Feature summary of the code (what each screen and module does, what is real vs demo) | PM | Largely covered now by `ARCHITECTURE.md` Part B (gap analysis). Confirm with the owner whether a separate summary is still wanted |
 | TASK-005 | Tell the teammate (upstream owner) about the path fix and the refactor before they keep building on `app.js` | Owner | MEASURED 2026-11-26 (`git fetch upstream`): `upstream/main` is still `5991d5b`, i.e. it has the broken `css/` / `js/` paths and the single-file `app.js`, and no commits we lack. If they edit `app.js` meanwhile, merging our `src/` layout will conflict |
 
 ## 5. Backlog (PROPOSED)
@@ -49,8 +50,10 @@ Backend:
   `src/data/spots.js` and `fetchSpotSignal` (`src/services/marine-data.js`) for backend calls.
 - Move FSI computation server-side (it runs in the browser today, with weights `FSI_WEIGHTS` / `FSI_TARGETS` in
   `src/config.js` marked "untuned"). Needs a data source for real catch logs before the weights can be tuned.
-- Decide where user data lives (prices, pins, journal are `localStorage` only) and the privacy promise that goes
-  with it.
+- Decide where user data lives (price reports and pins are `localStorage` only; the catch journal saves nothing) and
+  the privacy promise that goes with it.
+- Follow `ARCHITECTURE.md` section B4: Phase 0 ingest job and legal layers, FSI v1 server-side, back-test harness,
+  catch-log schema.
 - Hosting: the front end is on Vercel; decide whether the backend is Vercel functions or a separate service.
 
 AI:
@@ -66,16 +69,29 @@ Front end and quality:
 - Add a small automated smoke test (load the page, open each of the 12 screens, assert no console errors) so
   future changes do not rely on manual comparison.
 - Favicon (the browser requests `/favicon.ico` and gets 404).
+- **[Low] Two different "confidence" rules in the UI.** The map popup (`src/ui/popup.js:54`) says "medium" only when SST,
+  chlorophyll and depth are all live; the sidebar spot list (`src/ui/sidebar.js:42`) says "medium" when the FSI score is
+  75 or more. The second is derived from the score, not from data coverage, so the two can disagree for one spot.
+  UNVERIFIED by running; read from the code. Settle with one rule (the guide's: high / medium / low from data
+  completeness and freshness, capped at "medium" for areas without verified catch logs).
 - Optional: a recovery note for the dropped superseded code (see finding F-2).
 
 ## 6. Open questions for the owner
 
-1. ~~Merge `refactor/frontend-structure` into `main`~~ — done 2026-11-26.
-2. Should these docs (`AGENTS.md`, `CLAUDE.md`, `CODEX.md`, `TASK.md`) be pushed to the public fork? They contain no
-   secrets, but they describe how the team works.
-3. Backend: which language and host? Is a database allowed, and which one?
-4. AI: which model approach for fish ID (hosted API, open model, on-device), and is there a data set?
-5. Is the hackathon deadline known? The PM will plan backwards from it.
+1. ~~Merge `refactor/frontend-structure` into `main`~~ — done 2026-11-26. ~~Merge the first docs~~ — done.
+2. The build guide (G) and the function spec (S) give different phases for fuel/route, admin dashboard, fish ID, fish
+   price, bloom warning, SOS, voice and go/no-go (table in `ARCHITECTURE.md`, A3). Which one is authoritative? The PM
+   used S, the newer one.
+3. Is this hackathon entry the front-end prototype, the backend/AI core (Part A, Phase 0–1), or both? It decides what
+   the next tasks are.
+4. Commercial or non-profit (route A or B in the guide)? It decides which data sources are allowed; the prototype's
+   Open-Meteo use is non-commercial only.
+5. Backend: which language and host? Is a database allowed, and which one? (The guide recommends Python, FastAPI,
+   PostgreSQL + PostGIS, Redis; none of it is decided for us.)
+6. AI: which model approach for fish ID (hosted API, open model, on-device), and is there a data set?
+7. Is the hackathon deadline known? The PM will plan backwards from it.
+8. Do you want the reference documents (the three Thai files) stored in this public repository? The PM kept them out and
+   only summarised them.
 
 ## 7. Review log
 

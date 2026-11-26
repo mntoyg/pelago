@@ -1,8 +1,53 @@
-# pelago
+# Pelago Asia
 
-Pelago Asia is a static, no-build web prototype that shows where fish are likely to be across Asian waters. It
-combines a satellite globe, a fish-suitability index (FSI) and small tools for fishers (trip planner, sea
-conditions, fuel cost, catch journal, go/no-go, SOS). All FSI values and spot positions are **demo data**.
+Pelago Asia is a Thai-language web prototype for a platform that tells small-scale fishers, every morning, **where fish
+are likely to be, whether the sea is safe, and what the trip will cost in fuel**, using public satellite data. The
+long-term goal is a service that works across Asia and reaches fishers through the chat app they already use (LINE,
+Zalo, WhatsApp, Messenger, Telegram, Viber). It is being built for a hackathon (CodeAegis 2026); the current work
+focus is **backend and AI**.
+
+> **Status: front-end prototype.** This repository is a static web demo of the interface and the idea. It has no
+> backend, no database, no chat integration, no legal/no-go zone filtering and no AI model. Spot positions, starting
+> FSI values and the catch-journal rows are **demo data**, and the UI says so. It must not be used to decide where or
+> whether to go to sea.
+
+## What is in the prototype
+
+- A satellite globe (NASA GIBS and Esri imagery) with drill-down: country → province → fishing spot, and layer toggles.
+- A fish-suitability index (**FSI**, 0–100) per demo spot, computed in the browser from live NOAA ocean data (sea
+  surface temperature, chlorophyll, depth) plus the moon phase. Starting weights are untuned.
+- Twelve workspace screens: survey map, trip route, sea conditions and 7-day outlook, fuel cost calculator, catch
+  journal, fish ID (mock-up), satellite data status, go / don't go, fish price at the landing, bloom warning (explainer),
+  my pins, SOS (shows and copies coordinates only).
+- Honest labelling: confidence labels, "trial" wording, and a data screen that shows which sources are really connected
+  (for example the official weather agency feed is not).
+
+## Documentation
+
+| File | What it is |
+| --- | --- |
+| [`ARCHITECTURE.md`](ARCHITECTURE.md) | Target system (from the team's three reference documents) and how this prototype maps to it, with a gap analysis |
+| [`TASK.md`](TASK.md) | Current status, backlog, open questions, review log |
+| [`AGENTS.md`](AGENTS.md) | Rules for every AI agent and human working here: roles, remotes, conventions, how to verify, how to report |
+| [`CLAUDE.md`](CLAUDE.md), [`CODEX.md`](CODEX.md) | Tool-specific notes that build on `AGENTS.md` |
+
+## Where the product intent comes from
+
+Three team documents (Thai) define the target. They are not stored in this repository; `ARCHITECTURE.md` summarises them
+and cites the page numbers.
+
+| Document | Date |
+| --- | --- |
+| *Build guide: satellite-based fishing-ground platform for all of Asia* (คู่มือสร้างแพลตฟอร์มหาแหล่งปลาด้วยดาวเทียมสำหรับทั่วเอเชีย) | 2026-11-21 |
+| *Function specification for developers* (สเปกฟังก์ชันสำหรับพัฒนา แพลตฟอร์มหาแหล่งปลาทั่วเอเชีย) | 2026-11-24 |
+| *Satellite and geospatial data sources for the prototype* (แหล่งข้อมูลดาวเทียมและภูมิสารสนเทศสำหรับต้นแบบ) | 2026-11-25 |
+
+In short: 14 core functions (sign-up, daily data ingest, safety and no-go filter, FSI, morning recommendations, 7-day
+outlook, route and fuel, tides, pins, catch log, fish ID, web map, mangrove monitoring, admin dashboard) plus extras
+(go / don't go, fish prices, bloom warning, voice, SOS, many chat apps, many languages), delivered in five phases with
+quality gates: Thailand first, then one country at a time. Four principles run through all of it: safety before
+accuracy; never claim accuracy that has not been measured; usable with low literacy and weak internet; a fisher's data
+belongs to the fisher.
 
 ## Run it
 
@@ -57,3 +102,20 @@ src/
 - Data is demo-only and labelled as such in the UI. Keep the `DEMO DATA` / `UNVERIFIED` comments when editing.
 - Where to plug in a backend: `src/data/spots.js` (spot list and FSI), `src/services/marine-data.js`
   (`fetchSpotSignal`) and `src/services/weather.js` (`loadWeekForecast`).
+- This is a public repository: no API keys, tokens, `.env` files or personal data, ever. A future backend keeps its keys
+  in environment variables on the server.
+
+## Data sources and attribution
+
+The prototype uses these public, key-less services directly from the browser. Their terms apply to anyone who runs or
+deploys it.
+
+| Use | Source | Note |
+| --- | --- | --- |
+| Globe imagery | NASA GIBS (Blue Marble; chlorophyll, sea-surface-temperature and true-colour layers) | some layer ids are marked UNVERIFIED in `src/config.js` |
+| Close-up imagery | Esri World Imagery (Esri, Maxar, Earthstar Geographics) | reference imagery, not live |
+| Sea-surface temperature, chlorophyll, depth | NOAA CoastWatch ERDDAP (MUR SST, VIIRS chlorophyll, ETOPO 2022) | |
+| Waves, wind | Open-Meteo Marine and Forecast | **free for non-commercial use only**; a commercial service needs another source |
+
+Satellite-derived spots are estimates, not legal boundaries, and do not replace official announcements. See
+`ARCHITECTURE.md` (A5, A7) for the safety rules and the licence notes for the full target system.
