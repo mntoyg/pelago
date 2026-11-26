@@ -17,6 +17,10 @@
     "model_version": "fsi-v1.0.0",
     "weights": { "sst": 0.20, "front": 0.20, "chl": 0.25, "depth": 0.15, "moon": 0.10, "season": 0.10 },
     "targets": { "sst_c": 29, "sst_sigma_c": 2.5, "log10_chl": 0, "log10_chl_sigma": 0.5, "bloom_mg_m3": 10 },
+    "depth": { "ramp_up_m": 10, "full_to_m": 80, "zero_at_m": 200 },
+    "front": { "min_cells": 20 },
+    "moon": { "illum_penalty": 0.6 },
+    "season": { "flat": 0.5 },
     "freshness": { "grace_days": 1, "decay_days": 3 },
     "min_spacing_km": 10
   },

@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import math
 import re
 from dataclasses import dataclass
 from pathlib import Path
@@ -78,6 +79,61 @@ def _walk_strings(node: Any, path: str = ""):
         yield path, node
 
 
+_FSI_KEYS = {"model_version", "weights", "targets", "depth", "front", "moon", "season", "freshness", "min_spacing_km"}
+FSI_WEIGHT_KEYS = ("sst", "front", "chl", "depth", "moon", "season")
+_FSI_TARGET_KEYS = {"sst_c", "sst_sigma_c", "log10_chl", "log10_chl_sigma", "bloom_mg_m3"}
+_MODEL_VERSION = re.compile(r"fsi-v[0-9]+\.[0-9]+\.[0-9]+")
+
+
+def _is_num(x: Any) -> bool:
+    return isinstance(x, (int, float)) and not isinstance(x, bool) and math.isfinite(x)
+
+
+def _block(fsi: dict, key: str, keys: set[str]) -> dict:
+    b = fsi.get(key)
+    if not isinstance(b, dict) or set(b) != keys:
+        raise ConfigError(f"fsi.{key} must have exactly the keys {sorted(keys)}")
+    for k, v in b.items():
+        if not _is_num(v):
+            raise ConfigError(f"fsi.{key}.{k} must be a finite number")
+    return b
+
+
+def validate_fsi(fsi: Any) -> None:
+    """Strict check of the whole fsi block: unknown or missing keys, bool / NaN / Infinity / negative values, a weight
+    sum of 0 and inconsistent ranges are refused, so a typo cannot silently change a score."""
+    if not isinstance(fsi, dict) or set(fsi) != _FSI_KEYS:
+        raise ConfigError(f"fsi must have exactly the keys {sorted(_FSI_KEYS)}")
+    if not isinstance(fsi["model_version"], str) or not _MODEL_VERSION.fullmatch(fsi["model_version"]):
+        raise ConfigError("fsi.model_version must look like fsi-v1.0.0")
+    w = fsi["weights"]
+    if not isinstance(w, dict) or set(w) != set(FSI_WEIGHT_KEYS):
+        raise ConfigError(f"fsi.weights must have exactly the keys {list(FSI_WEIGHT_KEYS)}")
+    for k, v in w.items():
+        if not _is_num(v) or v < 0 or v > 1000:
+            raise ConfigError(f"fsi.weights.{k} must be a finite number in 0..1000")
+    if not sum(w.values()) > 0:
+        raise ConfigError("fsi.weights must not sum to 0")
+    t = _block(fsi, "targets", _FSI_TARGET_KEYS)
+    if t["sst_sigma_c"] <= 0 or t["log10_chl_sigma"] <= 0 or t["bloom_mg_m3"] <= 0:
+        raise ConfigError("fsi.targets: sigmas and the bloom threshold must be greater than 0")
+    d = _block(fsi, "depth", {"ramp_up_m", "full_to_m", "zero_at_m"})
+    if not 0 < d["ramp_up_m"] <= d["full_to_m"] < d["zero_at_m"]:
+        raise ConfigError("fsi.depth needs 0 < ramp_up_m <= full_to_m < zero_at_m")
+    f = _block(fsi, "front", {"min_cells"})
+    if f["min_cells"] < 1 or f["min_cells"] != int(f["min_cells"]):
+        raise ConfigError("fsi.front.min_cells must be an integer >= 1")
+    if not 0 <= _block(fsi, "moon", {"illum_penalty"})["illum_penalty"] <= 1:
+        raise ConfigError("fsi.moon.illum_penalty must be in 0..1")
+    if not 0 <= _block(fsi, "season", {"flat"})["flat"] <= 1:
+        raise ConfigError("fsi.season.flat must be in 0..1")
+    fr = _block(fsi, "freshness", {"grace_days", "decay_days"})
+    if fr["grace_days"] < 0 or fr["decay_days"] <= 0:
+        raise ConfigError("fsi.freshness needs grace_days >= 0 and decay_days > 0")
+    if not _is_num(fsi["min_spacing_km"]) or fsi["min_spacing_km"] <= 0:
+        raise ConfigError("fsi.min_spacing_km must be a number greater than 0")
+
+
 def validate(raw: dict[str, Any]) -> None:
     if not isinstance(raw, dict):
         raise ConfigError("config must be a JSON object")
@@ -116,6 +172,7 @@ def validate(raw: dict[str, Any]) -> None:
     mvf = ing["min_valid_fraction"]["sst"]
     if isinstance(mvf, bool) or not (isinstance(mvf, (int, float)) and 0 < mvf <= 1):
         raise ConfigError("min_valid_fraction.sst must be in (0, 1]")
+    validate_fsi(raw.get("fsi"))
     retries = raw.get("schedule", {}).get("retries")
     if isinstance(retries, bool) or not isinstance(retries, int) or not 1 <= retries <= 5:
         raise ConfigError("schedule.retries must be 1..5")

@@ -1,0 +1,2 @@
+# Config files are hashed by their raw bytes (config_sha256), so they must have the same line endings on every machine.
+backend/config/**/*.json text eol=lf
