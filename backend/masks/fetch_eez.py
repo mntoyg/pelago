@@ -65,12 +65,18 @@ def check_collection(doc) -> int:
     return n
 
 
+class _NoRedirect(urllib.request.HTTPRedirectHandler):
+    """The host check above covers the first URL only; a redirect could lead anywhere, so none is followed."""
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        return None                                       # refuse every redirect (the caller then gets an HTTPError)
+
+
 def fetch(layer: str, bbox) -> bytes:
     url = request_url(layer, bbox)
     if urllib.parse.urlsplit(url).hostname != HOST:      # defensive: the URL is built here, never taken from input
         raise ValueError("unexpected host")
     req = urllib.request.Request(url, headers={"User-Agent": "pelago-layer-fetch/1.0"})
-    with urllib.request.urlopen(req, timeout=TIMEOUT_S) as r:
+    with urllib.request.build_opener(_NoRedirect).open(req, timeout=TIMEOUT_S) as r:
         data = r.read(MAX_BYTES + 1)
     if len(data) > MAX_BYTES:
         raise ValueError("response larger than the cap")

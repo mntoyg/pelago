@@ -177,3 +177,10 @@ def test_fetched_collections_are_checked_before_anything_is_written():
                                                                          "coordinates": [[[0, 0], [1, 0], [1, float("nan")], [0, 0]]]}}]}):
         with pytest.raises(ValueError):
             fetch_eez.check_collection(bad)
+
+
+def test_the_fetch_never_follows_a_redirect_to_another_host():
+    h = fetch_eez._NoRedirect()
+    req = fetch_eez.urllib.request.Request(fetch_eez.request_url("eez", (100.0, 12.0, 101.0, 13.0)))
+    assert h.redirect_request(req, None, 302, "Found", {}, "https://evil.example/x") is None
+    assert fetch_eez.urllib.request.build_opener(fetch_eez._NoRedirect).handlers          # the opener used by fetch() has it
