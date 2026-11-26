@@ -1,0 +1,17 @@
+# Backend-only ignores. The repository root .gitignore has no entry for environment files (checked 2026-11-26),
+# so the backend carries its own. Secrets live in environment variables or the host's secret store, never in git.
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+# raw upstream downloads and back-test outputs are regenerated, never committed (and may carry licence limits)
+data/
+*.nc
+*.zarr/
