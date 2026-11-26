@@ -59,10 +59,11 @@ Run: SST 2026-11-24 (newest), chlorophyll the last 10 axis times, depth static, 
 
 Consequences (these are findings for the owner, see the report):
 
-* **Chlorophyll is the weak input.** On 2026-11-26 the newest chlorophyll in the bbox is 14 to 18 days old (11-08 to
-  11-12), older than the `max` of 10 days in the starting limits of `backend/README.md` 3.2, so every cell is `expired`
-  today unless the NOAA-20 dataset is used (newest 11-16, still 10 days old and empty over the bbox on a cloudy day is
-  possible; not measured). The FSI then runs without `chl` (freshness weight 0), as designed.
+* **Chlorophyll is the weak input.** On 2026-11-26 the newest chlorophyll in the bbox is 14 to 18 days old for the S-NPP
+  dataset (11-08 to 11-12), older than the `max` of 10 days in the starting limits of `backend/README.md` 3.2, so the
+  primary returns `no_recent_data` and every cell would be `expired`. The real ingest run (same day) fell back to NOAA-20
+  (newest 2026-11-16, exactly 10 days old) and got **12 of 200 cells** (6%). The FSI then runs mostly without `chl`
+  (freshness weight 0), as designed.
 * Risk **R5** (no near-shore wave/wind values) is **not confirmed for this bbox**: all 126 water cells and all 35 coastal water
   cells get a value from the nearest lattice point. The caveat is resolution, section 3.
 * Observed wave maximum over the window was 0.26 to 0.54 m and wind maximum 14.8 to 32.2 km/h that day (one lattice point
