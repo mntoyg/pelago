@@ -273,3 +273,29 @@ Marine, wind from Forecast); the chlorophyll chain has a NOAA-20 fallback (`erdd
 the ingest also stores `sst_grad_c_per_km` because only the ingest sees the full-resolution SST; the `ingest` block in the area
 file holds fetch-only settings (the API's config loader must accept or ignore it). Carry-forward (latest stored value with its own
 age) applies to SST, chlorophyll and depth, never to wave/wind. Not built here: API, FSI, masks, scheduling.
+
+## 10. FSI v1 and the back-test as built (2026-11-26, branches `feature/fsi-v1`, `feature/backtest`)
+
+```
+cd backend
+../.venv/Scripts/python -m fsi.run --area th-chonburi-coast --date 2026-11-26          # needs DATABASE_URL_INGEST (write role)
+../.venv/Scripts/python -m backtest.run --area th-chonburi-coast --end 2026-11-25 --count 52 --cache-dir <folder OUTSIDE the repo> --out report.md
+../.venv/Scripts/python -m pytest -q                                                    # database tests need PELAGO_TEST_ADMIN_URL
+```
+
+- `fsi/model.py` is pure (no database, clock or network): `score_area(cells, run_date, params, verification_level)`; `fsi/db.py` and
+  `fsi/pipeline.py` read `grid_daily` and the region's `verification_level` (fail closed to `trial`) and upsert `fsi_daily`;
+  `fsi/explain.py` builds the per-cell explanation in the shape of API_CONTRACT 4.5 and marks `moon` and `season` as placeholders.
+- Every weight and threshold comes from the `fsi` block (and `max_age_days`) of the area config, validated strictly by
+  `ingest/config.py: validate_fsi`. All values are untuned demo values. `CHL_8DAY_FRESH_DAYS = 8` is a code constant.
+- No SST (missing, invalid, expired, dated after the end of the local `run_date`) = no score: `fsi` NULL, every score column NULL.
+  Other missing or invalid inputs get weight 0 and a reason code (`*_missing`, `*_stale`, `*_invalid`). Confidence follows
+  API_CONTRACT 4.6 and is capped at `medium` while the area is not verified.
+- `S_front` is the percentile of the SST gradient among cells with `depth_m` NOT NULL (the ETOPO water proxy) until the land mask exists.
+- If a stored recommendation would end up on an unscored cell, or on a cell whose FSI or confidence no longer matches the stored
+  copy, the run fails with `recommendation_conflict` and writes nothing. It never deletes picks: re-run the pick step first.
+- `backtest/` computes coverage, direction-of-response, spread, weight-sensitivity and stability checks. **It is not evidence of
+  accuracy** (no catch logs, no Global Fishing Watch token). `backtest.checks.hit_rate` follows the A9 definition and was run on
+  SYNTHETIC data only. The cache of upstream values must be outside the repository (the code refuses a folder inside it).
+- Guard tests proven able to fail: [`docs/fsi-mutation-log.md`](docs/fsi-mutation-log.md), [`docs/backtest-mutation-log.md`](docs/backtest-mutation-log.md).
+  Result of the one live run: [`docs/fsi-backtest-report.md`](docs/fsi-backtest-report.md).
