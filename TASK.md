@@ -9,8 +9,8 @@ Items marked **PROPOSED** are the PM's suggestions and are not agreed scope unti
 | --- | --- |
 | Owner fork (`origin`) | https://github.com/mntoyg/pelago |
 | Teammate's original (`upstream`) | https://github.com/orapin67855-coder/pelago (we never push here) |
-| `main` | `db85230` Fix asset paths in index.html |
-| `refactor/frontend-structure` | `86519dd`, 3 commits ahead of `main`, pushed to `origin`, **not merged** |
+| `main` | `86519dd` (fast-forwarded from `db85230` on 2026-11-26 with the owner's go-ahead; `origin/main` has the same SHA) |
+| `refactor/frontend-structure` | `86519dd`, **merged into `main`** (branch kept on `origin`) |
 | `docs/agent-guides` | this file set; local, **not pushed** until the owner says so |
 | Stack | static HTML/CSS/vanilla ES modules, no build, deployed as-is on Vercel |
 | Data | all FSI values and spots are DEMO DATA; live inputs are NOAA ERDDAP, NASA GIBS, Esri, Open-Meteo |
@@ -31,13 +31,13 @@ Items marked **PROPOSED** are the PM's suggestions and are not agreed scope unti
 | --- | --- | --- |
 | TASK-000 | Forked `orapin67855-coder/pelago` to `mntoyg/pelago`, cloned, set `origin` and `upstream` | MEASURED 2026-11-26: `git remote -v`, GitHub shows `isFork: true` |
 | TASK-001 | Fixed `index.html` asset paths (`css/styles.css`, `js/app.js` did not exist, so the page had no styles or script) | MEASURED 2026-11-26: after the fix `styles.css` and `app.js` return 200 and the page renders. Pushed as `db85230` |
-| TASK-002 | Front-end restructure by SWE 01: `app.js` split into `src/` ES modules, `styles.css` sectioned with CSS variables, README structure section. UI and features unchanged | Reviewed by the PM, see REVIEW-001. Branch `refactor/frontend-structure` at `86519dd`. Awaiting the owner's decision to merge |
+| TASK-002 | Front-end restructure by SWE 01: `app.js` split into `src/` ES modules, `styles.css` sectioned with CSS variables, README structure section. UI and features unchanged | Reviewed by the PM, see REVIEW-001. Merged into `main` at `86519dd` (fast-forward, pushed to `origin`, MEASURED 2026-11-26: `git ls-remote origin main` = `86519dd`) |
 
 ## 4. Next up
 
 | ID | Task | Owner | Notes |
 | --- | --- | --- | --- |
-| TASK-003 | Decide how to land `refactor/frontend-structure` (fast-forward `main`, or a PR) and whether to push `docs/agent-guides` | Owner | PM recommends landing both: the review found no behavior change. Nothing is merged until the owner says so |
+| TASK-003 | Decide whether to land `docs/agent-guides` on `main` and push it to `origin` | Owner | The refactor is already merged. The docs branch is local only and sits on top of `main` (one commit) |
 | TASK-004 | Feature summary of the code (what each screen and module does, what is real vs demo) | PM | The owner asked for this before the refactor; it is easier and more accurate on the new `src/` layout. Pending |
 | TASK-005 | Tell the teammate (upstream owner) about the path fix and the refactor before they keep building on `app.js` | Owner | MEASURED 2026-11-26 (`git fetch upstream`): `upstream/main` is still `5991d5b`, i.e. it has the broken `css/` / `js/` paths and the single-file `app.js`, and no commits we lack. If they edit `app.js` meanwhile, merging our `src/` layout will conflict |
 
@@ -70,7 +70,7 @@ Front end and quality:
 
 ## 6. Open questions for the owner
 
-1. Merge `refactor/frontend-structure` into `main` now (TASK-003)?
+1. ~~Merge `refactor/frontend-structure` into `main`~~ — done 2026-11-26.
 2. Should these docs (`AGENTS.md`, `CLAUDE.md`, `CODEX.md`, `TASK.md`) be pushed to the public fork? They contain no
    secrets, but they describe how the team works.
 3. Backend: which language and host? Is a database allowed, and which one?
