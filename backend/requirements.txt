@@ -1,0 +1,5 @@
+# Pinned 2026-11-26 from PyPI (installed into a venv inside the worktree; .venv/ is not committed).
+numpy==2.5.5
+requests==2.34.2
+psycopg[binary]==3.3.9
+pytest==9.2.0

@@ -1,0 +1,43 @@
+{
+  "area_id": "th-chonburi-coast",
+  "name": "Chonburi coast",
+  "names": { "th": "ชายฝั่งชลบุรี" },
+  "country_code": "TH",
+  "timezone": "Asia/Bangkok",
+  "bbox": [100.7, 12.2, 101.2, 13.2],
+  "licence_route": "A",
+  "sea_window_local": ["04:00", "14:00"],
+  "boat_classes": {
+    "small":  { "label_key": "boat.small",  "length_m_min": 0,  "length_m_max": 10, "max_range_km": 30,
+                "wave_yellow_m": 1.0, "wave_red_m": 1.5, "wind_yellow_kmh": 20, "wind_red_kmh": 30 },
+    "medium": { "label_key": "boat.medium", "length_m_min": 10, "length_m_max": 18, "max_range_km": null,
+                "wave_yellow_m": 1.5, "wave_red_m": 2.5, "wind_yellow_kmh": 30, "wind_red_kmh": 40 }
+  },
+  "fsi": {
+    "model_version": "fsi-v1.0.0",
+    "weights": { "sst": 0.20, "front": 0.20, "chl": 0.25, "depth": 0.15, "moon": 0.10, "season": 0.10 },
+    "targets": { "sst_c": 29, "sst_sigma_c": 2.5, "log10_chl": 0, "log10_chl_sigma": 0.5, "bloom_mg_m3": 10 },
+    "freshness": { "grace_days": 1, "decay_days": 3 },
+    "min_spacing_km": 10
+  },
+  "max_age_days": { "sst": { "fresh": 2, "max": 5 }, "chl": { "fresh": 3, "max": 10 },
+                    "wave_wind_hours": { "fresh": 24, "max": 48 } },
+  "legal": { "layers_required": ["land", "eez_buffer_5km", "disputed", "protected", "seasonal_closure", "boat_class_zones"],
+             "layers_loaded": ["land", "eez_buffer_5km"], "incomplete_policy": "label", "eez_buffer_km": 5 },
+  "sources": {
+    "sst":       [ { "source_id": "erddap_mur_sst",       "role": "primary" } ],
+    "chl":       [ { "source_id": "erddap_viirs_chl",     "role": "primary" },
+                   { "source_id": "erddap_viirs_n20_chl", "role": "fallback" } ],
+    "depth":     [ { "source_id": "erddap_etopo_depth",   "role": "primary" } ],
+    "wave_wind": [ { "source_id": "open_meteo_marine",    "role": "primary" } ]
+  },
+  "ingest": {
+    "min_valid_fraction": { "sst": 0.5 },
+    "margin_pixels": 2,
+    "open_meteo": { "lattice_step_deg": 0.1, "max_snap_km": 15 },
+    "request_pause_s": 2,
+    "http_timeout_s": 60
+  },
+  "schedule": { "run_local_time": "03:00", "retries": 3 },
+  "notices": ["satellite_estimate_not_legal_boundary", "trial_area"]
+}
