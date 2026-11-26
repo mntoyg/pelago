@@ -255,7 +255,11 @@ CREATE TABLE pelago.fsi_daily (
   config_sha256       text NOT NULL CHECK (config_sha256 ~ '^[0-9a-f]{64}$'),
   computed_at         timestamptz NOT NULL DEFAULT now(),
   run_id              uuid REFERENCES pelago.job_runs (run_id),
+  -- true exactly when a score exists. recommendations reference it so that a cell without SST (no score) can never be
+  -- stored as a spot, in the database itself and not only in the application (S p.7: no SST, no score, no spot).
+  scored              boolean GENERATED ALWAYS AS (fsi IS NOT NULL) STORED,
   PRIMARY KEY (region_id, run_date, model_version, cell_id),
+  UNIQUE (region_id, run_date, model_version, cell_id, scored),
   FOREIGN KEY (region_id, run_date, cell_id) REFERENCES pelago.grid_daily (region_id, run_date, cell_id),
   -- "a cell with no SST gets no score (null, not 0)" (S p.7): fsi exists exactly when s_sst exists
   CHECK ((fsi IS NULL) = (s_sst IS NULL)),
@@ -268,7 +272,8 @@ COMMENT ON TABLE pelago.fsi_daily IS 'Sub-scores, freshness and FSI per cell. fs
 -- ---------------------------------------------------------------------------------------------------------------
 -- recommendations (STUB): the 3-5 area-level picks per area/date/boat class that the API serves (S C5, G p.9).
 -- Later phases add per-user messages (C5) and trip logs (C10) as separate tables; this table holds no user data.
--- The composite foreign keys make "a recommended spot in a forbidden cell" impossible to store.
+-- The composite foreign keys make "a recommended spot in a forbidden cell" and "a recommended spot in a cell with no
+-- score" impossible to store.
 -- ---------------------------------------------------------------------------------------------------------------
 CREATE TABLE pelago.recommendations (
   region_id       text NOT NULL,
@@ -278,6 +283,7 @@ CREATE TABLE pelago.recommendations (
   pick_rank       smallint NOT NULL CHECK (pick_rank BETWEEN 1 AND 5),
   cell_id         integer NOT NULL,
   eligible        boolean NOT NULL DEFAULT true CHECK (eligible),   -- always true; part of the FK below
+  scored          boolean NOT NULL DEFAULT true CHECK (scored),     -- always true; part of the fsi_daily FK below
   fsi             real NOT NULL CHECK (fsi BETWEEN 0 AND 100),      -- copy of fsi_daily.fsi at pick time
   confidence      text NOT NULL CHECK (confidence IN ('high', 'medium', 'low')),
   legal_status    text NOT NULL CHECK (legal_status IN ('complete', 'incomplete')),
@@ -287,8 +293,8 @@ CREATE TABLE pelago.recommendations (
   UNIQUE (region_id, run_date, boat_class, model_version, cell_id),
   FOREIGN KEY (region_id, run_date, boat_class, cell_id, eligible)
     REFERENCES pelago.cell_mask_daily (region_id, run_date, boat_class, cell_id, eligible),
-  FOREIGN KEY (region_id, run_date, model_version, cell_id)
-    REFERENCES pelago.fsi_daily (region_id, run_date, model_version, cell_id)
+  FOREIGN KEY (region_id, run_date, model_version, cell_id, scored)
+    REFERENCES pelago.fsi_daily (region_id, run_date, model_version, cell_id, scored)
 );
 COMMENT ON TABLE pelago.recommendations IS 'STUB. Area-level picks served by the API. FK to an eligible mask row and to a scored cell. No personal data.';
 

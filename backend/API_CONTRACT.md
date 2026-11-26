@@ -550,7 +550,7 @@ README section 3); "derived" = computed by the service at request time.
 | `freshness.compute.*` | `job_runs` rows with `job_kind` in (`mask`, `fsi`, `pick`) | |
 | `health.*` | none | a trivial query only |
 
-Cross-checks the schema enforces for contract rules (4.4): rule 1 `fsi_daily` CHECK `(fsi IS NULL) = (s_sst IS NULL)`;
+Cross-checks the schema enforces for contract rules (4.4): rule 1 `fsi_daily` CHECK `(fsi IS NULL) = (s_sst IS NULL)` plus the foreign key from `recommendations` to the *scored* `fsi_daily` row (`scored` column; added 2026-11-26 after the PM's test showed a no-SST cell could otherwise be stored as a spot);
 rules 3 and 4 `cell_mask_daily` CHECK on `eligible` and the composite FK from `recommendations` to
 `(…, cell_id, eligible)`; rule 5 `fsi_daily` CHECK on `confidence_cap`.
 

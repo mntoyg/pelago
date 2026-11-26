@@ -212,15 +212,11 @@ branch with `git archive`, read all four files, and reproduced the arithmetic cl
 | Claim: float `floor((lat+90)/0.05)` is wrong on cell edges | reproduced: `(12.3+90)/0.05 = 2045.9999999999998`; 170 of 3000 latitudes (0.00 to 29.99) land in the wrong row | MEASURED 2026-11-26 |
 | Claim: the "5 km apart" spot rule does nothing on a 0.05 degree grid | reproduced: neighbouring centres are 5.57 km (lat) and 5.43 km (lon) apart at 12.5 N | MEASURED 2026-11-26 |
 | Contract vs `schema.sql` vs the front end (`spot.fsi`, `spot.signal`) and ARCHITECTURE.md A4/A5 | consistent on reading; field-to-column table covers every contract field | READ 2026-11-26 |
-| `schema.sql` executed on PostgreSQL/PostGIS | **not run** by the seat or the PM (no database; Docker daemon off; pulling an image needs the owner's permission) | not tested |
+| `schema.sql` executed on PostgreSQL/PostGIS | not run at review time; **executed later the same day** with the owner's permission (`postgis/postgis:16-3.7`): applies cleanly, 42 of 42 checks pass after the F-3 fix | MEASURED 2026-11-26 |
 
 Findings:
 
-- **F-3 [Low] The database cannot stop a recommendation that points at an unscored cell.** `fsi_daily` forces `fsi IS NULL`
-  exactly when `s_sst IS NULL`, and `recommendations` has a foreign key to the `fsi_daily` row, but nothing forces that row's
-  `fsi` to be non-null, and `recommendations.fsi` is a separate copy. "No SST, no spot" is therefore enforced by the
-  application only on that path, although `API_CONTRACT.md` section 9 reads as if the database covered it. Fix: add a
-  generated `scored` column to `fsi_daily` and include it in the foreign key. Not fixed.
+- **F-3 [Low] The database could not stop a recommendation that pointed at an unscored cell.** Reproduced on 2026-11-26 by executing the schema on PostgreSQL 16 + PostGIS 3.7 (the cell with no SST was accepted as a spot). Fixed on branch `feature/schema-verified`: a generated `scored` column on `fsi_daily` and a composite foreign key from `recommendations`; regression test G21 goes red on the old schema and green on the new one, and mutation test M4 shows the foreign key is what blocks it. While doing this a test flaw surfaced: the first version of G12/M2 used a cell that two guards refused, so removing one guard did not turn the test red; the test now uses a scored land cell. See `backend/README.md` section 7.
 - **F-4 [Medium, fixed in this merge] `.env` was not ignored** in a public repository whose backend will need one
   (reported by the seat as F1, confirmed by the PM against `main`). Fixed with the root `.gitignore` rules, tested with
   `git check-ignore` (`.env`, `.env.local`, `backend/.env`, `*.pem` ignored; `.env.example` not ignored).
@@ -229,4 +225,4 @@ Findings:
 - The seat's own findings R1–R12 (design risks) and 15 owner decisions are in `backend/API_CONTRACT.md` section 11 and
   `backend/README.md` section 5. The most urgent ones are items 8 to 10 in section 6.
 
-`QA: 3 findings (C/H/M/L = 0/0/1/2) - 3 reproduced or confirmed by reading - not tested: schema execution on PostgreSQL/PostGIS, upstream datasets, Supabase behaviour`
+`QA: 3 findings (C/H/M/L = 0/0/1/2) - 3 reproduced or confirmed by reading - not tested at review time: schema execution (done later, see F-3), upstream datasets, Supabase behaviour`

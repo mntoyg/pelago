@@ -226,13 +226,14 @@ documents assume if you say nothing.
 | --- | --- | --- | --- | --- |
 | F1 | Medium | The repository root `.gitignore` lists only `.vercel`, `.DS_Store`, `Thumbs.db`, `node_modules`. A `.env` file created at the root, or in any folder without its own ignore, would be committed to a **public** repository. Actor: any contributor creating a local `.env`; precondition: `git add -A` or `git add .` (which `CLAUDE.md` forbids, but a human or another tool may do). | MEASURED 2026-11-26: `cat .gitignore` on `main` at `19cc7b6` | add `.env`, `.env.*`, `!.env.example` to the root `.gitignore`. `backend/.gitignore` in this branch covers only `backend/` |
 | F2 | Low | `vercel.json` serves the repository as static files with no build, so `backend/` (the schema, the contract, later the config files and any file placed there by mistake) would be published at `/backend/...` on the front end's domain. Nothing secret is in git, but a local untracked `.env` could be uploaded by a CLI deploy. UNVERIFIED which deploy method the owner uses (Git integration deploys only tracked files). | `vercel.json` and `AGENTS.md` section 5 read; no deploy tested | root `.vercelignore` listing `backend/`, or a Vercel "root directory" setting |
+| F4 | Low | `schema.sql` creates PostGIS in the `extensions` schema (the Supabase convention). On a database that already has PostGIS in `public` (the `postgis/postgis` Docker image's default database) it stops with `type "extensions.geometry" does not exist`. Create the test database `TEMPLATE template0`, or drop the extension first. Fixed in the test instructions, not in the schema. | MEASURED 2026-11-26 | document only |
 | F3 | Low | The root `README.md` and `AGENTS.md` repository maps do not mention `backend/` yet. | read | PM updates after the owner approves the layout |
 
 ## 7. Verification status of this design (what was and was not run)
 
 | Item | Result | Label |
 | --- | --- | --- |
-| `schema.sql` executed on PostgreSQL/PostGIS | **NOT EXECUTED.** No local PostgreSQL; the Docker CLI is installed but its daemon was not running (`docker images` failed to reach `dockerDesktopLinuxEngine`), and pulling an image would be a network call outside this task. Syntax and PostGIS behaviour of the generated columns, the `ST_MakeEnvelope` generated geometry, the composite foreign keys, `security_invoker` views and the `DO` block are therefore **unverified** | MEASURED 2026-11-26 (the tool check) |
+| `schema.sql` executed on PostgreSQL/PostGIS | **EXECUTED by the PM on 2026-11-26** on `postgis/postgis:16-3.7` (PostgreSQL 16.16, PostGIS 3.7.0) in a clean database: applies with no error. `db/tests/schema_test.sql` then passed **42 of 42** checks: cell-id vectors in SQL, generated columns, 21 guard tests that must reject, 4 mutation tests (remove one guard, the forbidden write is then accepted, so the guard tests can fail), the views. The first run found a hole (no-SST cell could be recommended); fixed with the `scored` column and foreign key. **Still not run:** Supabase itself (its role setup, `security_invoker` on its PostgreSQL version, RLS with real roles) | MEASURED 2026-11-26 |
 | Cell-id scheme | the integer method and its test vectors were computed in Python 3.12 on 2026-11-26; the SQL function was not run | MEASURED (Python only) |
 | Structural lint of `schema.sql` | a throwaway script (not committed) checked: balanced parentheses, every statement terminated, every `REFERENCES` / `FOREIGN KEY` target table and column exists in the file. This is **not** a PostgreSQL parse | MEASURED 2026-11-26, see the report |
 | Contract examples | illustrative; the FSI in the example was recomputed with the formula, not produced by a model | MEASURED (arithmetic) |
@@ -246,8 +247,8 @@ Docs consulted: [PostGIS on Supabase](https://supabase.com/docs/guides/database/
 
 ## 8. First steps for the builder (when the owner approves)
 
-1. Run `db/schema.sql` on a **throwaway** PostGIS (local container or a Supabase branch) and fix whatever it reports;
-   then run the cell-id vectors through both SQL and Python.
+1. ~~Run `db/schema.sql` on a throwaway PostGIS~~ — done 2026-11-26 (see section 7). Re-run `db/schema.sql` and
+   `db/tests/schema_test.sql` on every schema change, and once on a Supabase branch before the demo.
 2. Write `app/schemas.py` from the contract and the contract tests in `API_CONTRACT.md` section 12 first; make each
    go red by removing its guard before trusting it (`AGENTS.md` section 7, rule 5).
 3. One dry run of each fetcher on the bbox with output to a scratch folder; record dataset, axis order, fill values
