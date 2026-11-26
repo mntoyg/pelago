@@ -1,7 +1,7 @@
 # FSI v1: mutation log (guards proven able to fail)
 
 MEASURED 2026-11-26 on branch `feature/fsi-v1` (base commit `554cd53` plus one added test), worktree `pelago-fsi/backend`,
-`fsi.__file__` printed as `...\pelago-fsiackendsi\__init__.py` (the tree under test is this one).
+`fsi.__file__` printed as `D:/Hackathon/CodeAgis 2026/pelago-fsi/backend/fsi/__init__.py` (the tree under test is this one).
 
 Method: for each row the file was copied to a saved copy, its SHA-256 (first 16 hex) recorded, the edit applied, the three FSI
 test files run (`tests/test_fsi_model.py`, `test_fsi_config.py`, `test_fsi_db.py`; database tests with `PELAGO_REQUIRE_DB=1` against a
