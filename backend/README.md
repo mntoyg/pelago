@@ -299,3 +299,36 @@ cd backend
   SYNTHETIC data only. The cache of upstream values must be outside the repository (the code refuses a folder inside it).
 - Guard tests proven able to fail: [`docs/fsi-mutation-log.md`](docs/fsi-mutation-log.md), [`docs/backtest-mutation-log.md`](docs/backtest-mutation-log.md).
   Result of the one live run: [`docs/fsi-backtest-report.md`](docs/fsi-backtest-report.md).
+
+## 11. Safety mask, pick step and the daily compute order as built (2026-11-26, branch `feature/mask-and-pick`)
+
+```
+cd backend
+../.venv/Scripts/python -I masks/fetch_eez.py --bbox 100.7 12.2 101.2 13.2 --out-dir config/layers/th-chonburi-coast   # once per deployment
+../.venv/Scripts/python -m compute.run --area th-chonburi-coast --date 2026-11-26      # mask -> fsi -> pick; needs DATABASE_URL_INGEST
+../.venv/Scripts/python -m pytest -q                                                    # database tests need PELAGO_TEST_ADMIN_URL
+```
+
+- **Layers** live in `config/layers/<area_id>/`: `land.geojson` (committed, Natural Earth, public domain) and `eez.geojson` +
+  `internal_waters.geojson` (Marine Regions, CC BY 4.0, NOT committed, fetched by `masks/fetch_eez.py`). Sources, hashes, licences
+  and limits: `config/layers/th-chonburi-coast/PROVENANCE.md`. A file that is missing or fails validation is an absent layer, and an
+  absent layer is **unknown (NULL), never recommended**. The 5 km buffer is `legal.eez_buffer_km` in the area config.
+- **Mask** (`masks/`, `legal.py`, `seastate.py`): the cell centre is tested by PostGIS (`masks/geo.py`): `is_water` (not on land),
+  `eez_ok` (inside EEZ + internal waters and at least `eez_buffer_km` from the BORDER, geodesic; the coastline and the edges of
+  small holes around islands are not a border). Disputed, protected, closed-season and boat-class-zone flags stay NULL, so
+  `legal_status` is `incomplete` and, under `incomplete_policy: label`, the spots are labelled trial. `legal.decide` and the CHECK in
+  `cell_mask_daily` encode the same eligibility rule twice. Sea state per boat class comes from the stored wave/wind maxima and
+  the class thresholds; a missing, stale, NaN or negative reading is yellow `forecast_missing`/`forecast_stale` and not eligible.
+- **Pick** (`pick/`): per area, date and boat class, the best FSI first, each next spot at least `fsi.min_spacing_km` (10) from every
+  chosen one (great-circle between cell centres, "at least" means equal is allowed), at most 5. Fewer than 3 are stored as they are
+  (run status `partial`, `few_picks` or `no_picks`); the list is never padded. Candidates must be eligible, scored and inside the
+  area box. Writing replaces the date's picks in one transaction (idempotent).
+- **Order** (`compute/`): mask, then FSI, then pick, one `job_runs` row each (`mask`, `fsi`, `pick`); a failed step makes the later
+  steps `skipped` rows. The mask step deletes the date's old picks in the same transaction as its write (they cannot outlive the
+  mask they were chosen from); run alone (`run_mask` without `clear_picks`) it refuses a change that would orphan a pick
+  (`recommendation_conflict`). A failure after the mask therefore leaves the date with NO picks, never stale ones.
+- **Known limits**: land is 1:10m (small islands missing); a maritime border that meets the coast is ignored for the last 2 km;
+  in this demo area every border reachable from the cells is coast, so the 5 km buffer is exercised by the synthetic tests only,
+  not by the real layers; the mask and pick use the `small` class by default (`--boat-class` repeats); the FSI front score still
+  uses the ETOPO water proxy and has not been switched to the mask.
+- Guard tests proven able to fail: [`docs/mask-pick-mutation-log.md`](docs/mask-pick-mutation-log.md).
