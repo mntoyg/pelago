@@ -22,7 +22,9 @@ Items marked **PROPOSED** are the PM's suggestions and are not agreed scope unti
 | Owner | `mntoyg` | decides scope, merges, pushes to `main` |
 | PM | "PM" chat | active |
 | SWE 01 | "Pelago SWE 01" | idle; delivered TASK-002 |
-| Backend, AI | not started | waiting for the owner's decisions in section 6 |
+| Backend, AI (Claude seats) | done: contract/schema, ingest, FSI + back-test | idle |
+| Mask and pick seat | "Land/EEZ mask and pick step", started 2026-11-26 | **on hold** by the owner (2026-11-26); may hold partial work on its own branch |
+| Codex (backend + AI) | one chair, work package in section 4.3 | assigned 2026-11-26, not started |
 
 ## 3. Done
 
@@ -63,7 +65,7 @@ Backend slice for the demo (plan 4.1, deliverables 1 to 7)
 - [x] Writer into `grid_daily` and `job_runs`; retry 3 times, fallback, carry-forward with the value's own age
 - [x] Ingest tests: 101 pass (reproduced by the PM against a real PostGIS); mutation checks reproduced by the PM (5 of 5 red)
 - [ ] Daily scheduler for the ingest (not built)
-- [ ] Land mask and EEZ mask, and the test "no recommended spot in a forbidden cell" (deliverable 3)
+- [ ] Land mask and EEZ mask, and the test "no recommended spot in a forbidden cell" (deliverable 3) — **ON HOLD by the owner, 2026-11-26**; resume later (the pick step writes `recommendations`, which the API in section 4.3 only reads)
 - [x] FSI v1 on the server: six sub-scores, confidence, per-cell explanation (deliverable 4); 216 tests pass (PM run), 10 PM mutations red
 - [ ] API (FastAPI) reading the database (deliverable 1)
 - [x] Back-test report (deliverable 5): coverage and sanity checks only, **not evidence of accuracy** (no catch logs, no Global Fishing Watch token); 41 of 52 dates
@@ -136,6 +138,74 @@ or the host's secret store, never in the repository.
 
 Not in this week: chat apps and sign-up (C1, C5, E6, E7), tides, catch log and price server, fish ID, mangroves,
 admin dashboard, official-warning feed, other countries. The data screen keeps saying so.
+
+### 4.3 Codex work package: backend + AI (assigned by the owner, 2026-11-26)
+
+One Codex chair, items in order, **one branch per item, cut from `main`**, pushed to `origin` with the remote named.
+The mask and pick work is on hold (section 2), so Codex does **not** touch `backend/masks/`, `backend/legal.py`,
+the pick step or the `recommendations` writer. Everything here is the PM's brief; read `AGENTS.md`, `CODEX.md`,
+`backend/README.md` and `backend/API_CONTRACT.md` first.
+
+How the boxes work:
+
+- `[ ]` open. `[x]` = Codex finished the item and says so. When you finish an item, tick **only your own boxes in this
+  section**, on your branch, and append the short SHA and the date, e.g. `[x] ... (a1b2c3d, 2026-11-27)`. Change nothing
+  else in `TASK.md`.
+- The PM reproduces each item before it is merged and then appends `PM-checked` to the line. A ticked box without
+  `PM-checked` is a claim, not a result.
+- If an item turns out wrong or too big, stop and tell the PM; do not widen the scope.
+
+Rules for every item:
+
+- Verify yourself (`AGENTS.md` section 7): quote the output; every new guard or test gets a mutation check on a copy
+  (remove the guard, the test must go red for that cause, record the file hash before and after, restore from the
+  saved copy).
+- Real PostGIS tests: Docker image `postgis/postgis:16-3.7` is already on the owner's machine; bind to `127.0.0.1`,
+  random password that never touches the repo, database `TEMPLATE template0`, remove the container afterwards, run
+  with `PELAGO_REQUIRE_DB=1` and `PELAGO_TEST_ADMIN_URL`. If your sandbox cannot reach Docker or localhost, say so and
+  report "not tested: real PostGIS"; do not report a skipped test as a pass.
+- No new package, dataset or other download without the owner's explicit yes (name, source, size). Needed packages
+  are named below so you can ask once. The repository is public: no secrets, tokens, `.env`, raw dumps.
+- Stay inside `backend/` and the root `.gitignore` unless the item says otherwise. Do not touch `src/`, `index.html`.
+- Usage: read your meter before each item (the owner's rule: Codex remaining must stay at or above the day's floor).
+  Keep context small; open one file at a time.
+
+**CX-1 Backend hygiene** (branch `fix/backend-hygiene`; files: `.gitignore`, `backend/ingest/fetchers/`,
+`backend/API_CONTRACT.md`, `backend/README.md`, `backend/config/`; small, do it first)
+
+- [ ] Root `.gitignore` ignores `.venv/`, `__pycache__/`, `*.pyc`, `.pytest_cache/` (F-8); `git status` is clean after a test run
+- [ ] Fetchers use the canonical ERDDAP dataset ids, and `http_get` in `backend/ingest/fetchers/base.py` no longer follows redirects blindly: only `https`, only the hosts already named in the area config, at most 2 hops; a test sends a redirect to another host and it is refused for that reason (F-9)
+- [ ] The two lines that say the owner "may remove" the NOAA-20 fallback now say it is kept (D11)
+- [ ] `wx_issued_at` is reworded in the contract and README as the retrieval time, not a forecast issue time (F-10)
+
+**CX-2 FastAPI read API** (branch `feature/backend-api`; new folder `backend/api/`; the contract is the spec, section
+12 of `backend/API_CONTRACT.md` lists the tests; asks the owner once for `fastapi`, `uvicorn`, `httpx` from PyPI)
+
+- [ ] `GET /v1/health`, `GET /v1/areas`, `GET /v1/areas/{area_id}`, `GET /v1/areas/{area_id}/freshness` as in the contract
+- [ ] `GET /v1/areas/{area_id}/spots` reads the `recommendations` / `fsi_daily` / mask rows only (never writes); with no picks it answers `200` with empty `spots` and the contract's `status` (`no_run`, `no_data`, `withheld_legal_incomplete`, ...), it never invents spots and the front end must not read an empty `200` as a reason to show anything else; legal status is passed through and the area stays labelled "trial: legal layers incomplete"
+- [ ] The single confidence rule of contract 4.6 lives in one place and the API output uses it
+- [ ] Connects with the read-only database role from `DATABASE_URL` (environment only); no secret in code, logs or error bodies; no stack trace in any error response; errors follow contract section 5
+- [ ] Input hardening: unknown `area_id`, bad date, future date, bad `boat_class`, oversized or repeated query parameters, odd Unicode in path and query: each returns the documented 4xx and never a 500
+- [ ] CORS allowlist and a basic rate limit (contract 2.2); the responses carry the `ETag` / `Cache-Control` / `X-Request-Id` headers of 2.1 (including `304` on `If-None-Match`)
+- [ ] Contract tests of section 12 pass on a real PostGIS with seeded rows; each rule in 4.4 has a mutation check that goes red
+- [ ] `backend/README.md` says how to run the API locally and what is not built
+
+**CX-3 Daily job runner** (branch `feature/daily-job`; new `backend/jobs/`; the scheduler account, secrets and any
+workflow file are owner actions, so no workflow file and no secret are committed)
+
+- [ ] `python -m backend.jobs.run_daily --area th-chonburi-coast [--date YYYY-MM-DD]` runs fetch (ingest) then FSI, writes a `job_runs` row per step, is idempotent (a second run changes nothing), and exits non-zero if any step failed
+- [ ] The mask and pick steps are listed as a named hook that is reported `skipped: not built` in `job_runs` (so the mask seat can plug in later without changing the order)
+- [ ] A failed step stops the later steps, leaves no half-written `recommendations` row, and the next run recovers; tested with an injected failure and a mutation check
+- [ ] `backend/README.md` explains how to run it from a host's cron or scheduler (no host chosen yet, open question 2)
+
+**CX-4 AI: FSI checks and stability measurements** (branch `feature/fsi-checks`; files: `backend/fsi/`,
+`backend/backtest/`, one new report under `backend/docs/`; numbers only, no accuracy claim)
+
+- [ ] F-16: the SST temperature-front input is checked on one real SST field for the area (one small ERDDAP request, within the request limits already in the back-test brief); the report shows the gradient map statistics, edge-of-grid and land-adjacent behaviour, and says plainly if the front looks wrong
+- [ ] Open question 13: with the existing back-test harness, measure week-to-week agreement for (a) today's weights, (b) a lower front weight, (c) the front smoothed over several days; same metrics as REVIEW-004 (Spearman, top-20% overlap vs random); the default weights in the config are **not** changed, the owner decides
+- [ ] The report states what each result does and does not show; chlorophyll-empty behaviour (open question 12) is shown unchanged
+
+Out of scope for Codex now: land/EEZ mask, pick step, front end, deployment accounts, Supabase project creation.
 
 ### 4.2 Other next steps
 
