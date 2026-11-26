@@ -167,7 +167,7 @@ CREATE TABLE pelago.grid_daily (
   -- wave and wind: maximum over the sea window (default 04:00-14:00 local) of the area's local date
   wave_window_max_m  real CHECK (wave_window_max_m BETWEEN 0 AND 30),
   wind_window_max_kmh real CHECK (wind_window_max_kmh BETWEEN 0 AND 400),
-  wx_issued_at       timestamptz,                                           -- forecast issue time, UTC
+  wx_issued_at       timestamptz,                                           -- retrieval time, UTC
   wx_source          text,
   ingest_run_id      uuid REFERENCES pelago.job_runs (run_id),               -- last run that wrote this row
   ingested_at        timestamptz NOT NULL DEFAULT now(),
