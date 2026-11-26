@@ -35,6 +35,52 @@ Items marked **PROPOSED** are the PM's suggestions and are not agreed scope unti
 
 ## 4. Next up
 
+### 4.1 One-week plan (PROPOSED, for the owner's approval)
+
+Deadline: hackathon submission **within one week of 2026-11-26** (about **2026-12-03**; the exact date is still to be
+confirmed). Scope decided by the owner: prototype **plus** a backend/AI core. A week cannot hold the whole of
+`ARCHITECTURE.md` Part A, so the plan is a thin vertical slice for **one area**, with everything else labelled as not
+built. Proposed demo area: the Chonburi coast (the prototype's own demo spots, about lon 100.7–101.2, lat 12.2–13.2).
+
+What gets demonstrated at the end:
+
+| # | Deliverable | Spec | Notes |
+| --- | --- | --- | --- |
+| 1 | Backend API (FastAPI) on Supabase PostGIS, deployed online | S: C2, C4, C14 (light) | `GET` spots for an area with FSI, sub-scores, confidence, data age, sea state; a health/freshness endpoint |
+| 2 | Daily ingest for the demo area into a 0.05° grid: SST, chlorophyll, depth, waves/wind | S: C2 | Reuse the datasets the prototype already queries (`jplMURSST41`, `nesdisVHNchlaDaily`, `ETOPO_2022_v1_15s`, Open-Meteo); store the data date; retry, then fall back to the latest data with its age |
+| 3 | Minimal safety filter: land mask, EEZ with a 5 km buffer, "no data = no recommendation" | S: C3 (part) | Closed seasons and protected zones for the area are **not available** this week; the area is labelled "trial: legal layers incomplete" (see open question 3) |
+| 4 | FSI v1 on the server: 6 sub-scores including the temperature front, freshness weights, confidence level, explanation | S: C4 | Replaces `computeFsi` in the browser; same output shape for the UI |
+| 5 | Back-test report: FSI over the past 1–2 years, hit-rate method as in G p.12 | G p.12 | Compared with Global Fishing Watch only if the owner provides an API token (internal use only); otherwise coverage and sanity checks only, stated plainly |
+| 6 | Front end reads the API (config switch, falls back to today's in-browser path) and shows data age and one confidence rule | front end | Also fixes the two-rule confidence finding (section 5) |
+| 7 | Automated tests, a red-team review pass, demo script | `AGENTS.md` §7 | Includes "no recommended spot in a forbidden cell" and mutation checks of the filter tests |
+
+Schedule. The owner's Claude weekly meter is shared by every seat and **resets on Sat 2026-11-28 at 10:00 Thai time**
+(it is at 59% today), so the light work goes first and the heavy building starts after the reset:
+
+| Day | Work |
+| --- | --- |
+| Thu 26 Nov | decisions recorded (this section), plan approved, owner actions below |
+| Fri 27 Nov | light: API contract, DB schema, repo layout for `backend/`, test plan (PM + one SWE, small) |
+| Sat 28 Nov (after 10:00) | ingest for the demo bbox (SST, chlorophyll, depth, waves/wind) into the grid |
+| Sun 29 Nov | land/EEZ masks and the filter tests; FSI v1 on the server |
+| Mon 30 Nov | deploy the API and the scheduled ingest; front end reads the API |
+| Tue 1 Dec | back-test; red-team review of the filter and the API (separate seat, reproduces everything) |
+| Wed 2 Dec | fixes, docs, demo rehearsal, freeze |
+| Thu 3 Dec | buffer and submission |
+
+Seats (PROPOSED): **SWE-BE 01** (backend: API, ingest, FSI), **Pelago SWE 01** (front end), a **reviewer** seat for the
+red-team pass, and the PM. At most two builders at once, because the weekly meter is shared.
+
+Owner actions (the PM cannot do these for you): create the Supabase project (free tier is enough); create an account on
+a host for the FastAPI service (the guide suggests a cloud host; Render or Fly are options); optionally register for a
+Global Fishing Watch API token (internal back-testing only, not for display). Keep every key in environment variables
+or the host's secret store, never in the repository.
+
+Not in this week: chat apps and sign-up (C1, C5, E6, E7), tides, catch log and price server, fish ID, mangroves,
+admin dashboard, official-warning feed, other countries. The data screen keeps saying so.
+
+### 4.2 Other next steps
+
 | ID | Task | Owner | Notes |
 | --- | --- | --- | --- |
 | TASK-004 | Feature summary of the code (what each screen and module does, what is real vs demo) | PM | Largely covered now by `ARCHITECTURE.md` Part B (gap analysis). Confirm with the owner whether a separate summary is still wanted |
@@ -52,7 +98,8 @@ Backend:
   the privacy promise that goes with it.
 - Follow `ARCHITECTURE.md` section B4: Phase 0 ingest job and legal layers, FSI v1 server-side, back-test harness,
   catch-log schema.
-- Hosting: the front end is on Vercel; decide whether the backend is Vercel functions or a separate service.
+- Hosting: the front end stays on Vercel; the backend is FastAPI + Supabase (decision D5); where FastAPI runs is still
+  to be chosen (section 6, open question 2).
 
 AI:
 
@@ -74,22 +121,33 @@ Front end and quality:
   completeness and freshness, capped at "medium" for areas without verified catch logs).
 - Optional: a recovery note for the dropped superseded code (see finding F-2).
 
-## 6. Open questions for the owner
+## 6. Decisions and open questions
 
-1. ~~Merge `refactor/frontend-structure` into `main`~~ — done 2026-11-26. ~~Merge the first docs~~ — done.
-2. The build guide (G) and the function spec (S) give different phases for fuel/route, admin dashboard, fish ID, fish
-   price, bloom warning, SOS, voice and go/no-go (table in `ARCHITECTURE.md`, A3). Which one is authoritative? The PM
-   used S, the newer one.
-3. Is this hackathon entry the front-end prototype, the backend/AI core (Part A, Phase 0–1), or both? It decides what
-   the next tasks are.
-4. Commercial or non-profit (route A or B in the guide)? It decides which data sources are allowed; the prototype's
-   Open-Meteo use is non-commercial only.
-5. Backend: which language and host? Is a database allowed, and which one? (The guide recommends Python, FastAPI,
-   PostgreSQL + PostGIS, Redis; none of it is decided for us.)
-6. AI: which model approach for fish ID (hosted API, open model, on-device), and is there a data set?
-7. Is the hackathon deadline known? The PM will plan backwards from it.
-8. Do you want the reference documents (the three Thai files) stored in this public repository? The PM kept them out and
-   only summarised them.
+### Decided by the owner on 2026-11-26
+
+| # | Decision | Consequence |
+| --- | --- | --- |
+| D1 | Scope: prototype **plus** a backend/AI core | plan in section 4.1 |
+| D2 | The function spec **S (2026-11-24)** is authoritative where it differs from the guide G (2026-11-21) | phases in `ARCHITECTURE.md` A3 follow S |
+| D3 | Project type: **non-profit / social project** (the guide's route A) | all sources may be used, including non-commercial ones such as Open-Meteo, but the design must keep a switch to route B (replace WDPA, Open-Meteo, drop Global Fishing Watch) by configuration |
+| D4 | Deadline: **within one week** | thin vertical slice, one area |
+| D5 | Backend: **Python FastAPI + Supabase (PostgreSQL/PostGIS)** | needs a place to run FastAPI (owner action) |
+| D6 | AI focus this week: **server-side FSI + back-testing**; fish ID stays a labelled mock-up | the fish screen keeps saying it is not real AI |
+| D7 | The three reference documents are **not stored** in the repository; `ARCHITECTURE.md` is the summary | nothing to commit |
+
+### Still open
+
+1. Exact submission date and format (a live demo? a video? a pitch?). The plan assumes about 2026-12-03.
+2. Where the FastAPI service runs, and who creates that account (section 4.1, owner actions).
+3. **Legal data gap.** The guide's rule is "no complete legal-zone data = do not recommend". For the Chonburi coast we
+   will have land and EEZ but **not** closed seasons or protected zones this week. Options: show spots clearly marked
+   "trial: legal layers incomplete, not for real use" (PM's proposal, matches the prototype's honest labelling), or
+   show no spots for the area. Which one for the demo?
+4. Demo area: the Chonburi coast (proposed), or another?
+5. Global Fishing Watch token for the back-test: will the owner register one (internal use only)?
+6. Repository layout for the backend: a `backend/` folder in this repository (PM's proposal; Vercel keeps serving the
+   static front end), or a separate repository.
+7. Tell the teammate who owns `upstream` (TASK-005) before they edit `app.js`.
 
 ## 7. Review log
 
