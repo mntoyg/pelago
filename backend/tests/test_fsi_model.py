@@ -58,6 +58,19 @@ def test_missing_chlorophyll_is_excluded_not_scored_as_zero():
     assert s.confidence == "low" and "chl_missing" in s.confidence_reasons
 
 
+def test_freshness_enters_numerator_and_denominator():
+    """With ages 3 and 5 days, a_sst = exp(-2/3) and a_chl = exp(-4/3); the score must equal the weighted mean using them."""
+    cell = full_cell(cid=1, sst_grad_c_per_km=0.5, sst_age=3, chl_age=5, chl_mg_m3=2.0)
+    s = one(cell)
+    moon = moon_for_local_date(RUN, P.timezone)["illumination"]
+    a_sst, a_chl = math.exp(-2 / 3), math.exp(-4 / 3)
+    sub = {"sst": 1.0, "front": 24.5 / 25, "chl": math.exp(-0.5 * (math.log10(2.0) / 0.5) ** 2), "depth": 1.0,
+           "moon": 1 - 0.6 * moon, "season": 0.5}
+    fresh = {"sst": a_sst, "front": a_sst, "chl": a_chl, "depth": 1, "moon": 1, "season": 1}
+    assert s.fsi == pytest.approx(manual(P, sub, fresh), abs=1e-3)
+    assert s.fresh["front"] == pytest.approx(a_sst)          # the front shares the SST's age
+
+
 # ---- "no SST = no score" -----------------------------------------------------------------------------------------------
 def test_no_sst_means_no_score_even_when_everything_else_is_present():
     cell = full_cell(sst_c=None, sst_observed_at=None)
