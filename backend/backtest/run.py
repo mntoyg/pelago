@@ -56,7 +56,7 @@ def main(argv: list[str] | None = None) -> int:
         area.area_id, p.model_version, p.config_sha256, sorted(history), stats, checks.coverage(history, scored),
         checks.monotonic_sweeps(p), checks.distribution(scored), checks.ranking_drivers(history, scored, p),
         checks.weight_sensitivity(history, p), checks.chlorophyll_dependence(history, p), checks.stability(scored),
-        datetime.now(timezone.utc).strftime("%Y-%m-%d"), commit)
+        datetime.now(timezone.utc).strftime("%Y-%m-%d"), commit, checks.stability_drivers(history, p))
     if a.out:
         Path(a.out).write_text(text, encoding="utf-8")
         print(f"report written: {a.out} ({len(history)} dates, requests {stats['requests']})")

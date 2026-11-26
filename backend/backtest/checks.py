@@ -229,6 +229,21 @@ def stability(scored: Mapping[date, list[CellScore]]) -> list[dict]:
     return rows
 
 
+def stability_drivers(history: Mapping[date, list[CellInputs]], p: FsiParams, level: str = "trial") -> list[dict]:
+    """Where does the week-to-week change come from? The stability of neighbouring dates is recomputed with one non-SST weight
+    switched off at a time ('none off' is the baseline)."""
+    out = []
+    for off in (None,) + tuple(k for k in SUBSCORES if k != "sst"):
+        w = dict(p.weights)
+        if off:
+            w[off] = 0.0
+        alt = replace(p, weights=w)
+        rows = stability({d: score_area(c, d, alt, level) for d, c in history.items()})
+        out.append({"off": off or "none", "pairs": len(rows), "spearman": _mean(r["spearman"] for r in rows),
+                    "top20_overlap": _mean(r["top20_overlap"] for r in rows)})
+    return out
+
+
 # ---------------------------------------------------------------------------------------------------------------------
 # 6. hit rate (A9 definition) -- needs catch logs; only SYNTHETIC data exists
 # ---------------------------------------------------------------------------------------------------------------------

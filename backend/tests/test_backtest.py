@@ -206,3 +206,12 @@ def test_end_to_end_offline_report_says_it_is_not_evidence_of_accuracy(tmp_path,
     assert "NOT EVIDENCE OF ACCURACY" in text and "Global Fishing Watch was not used" in text and "SYNTHETIC" in text
     assert "weekly sample is **not** day-to-day" in text
     assert run_main(["--area", "th-chonburi-coast", "--end", "2026-06-01", "--count", "1", "--cache-dir", "backend/data", "--offline"]) == 2
+
+
+def test_stability_drivers_lists_the_baseline_and_each_switched_off_weight():
+    h = synthetic_history()
+    rows = checks.stability_drivers(h, P)
+    assert [r["off"] for r in rows] == ["none", "front", "chl", "depth", "moon", "season"]
+    assert all(r["pairs"] == 3 for r in rows)
+    base = rows[0]["spearman"]
+    assert any(r["spearman"] != base for r in rows[1:])                          # switching an input off does change the picture

@@ -15,7 +15,8 @@ def _pct(x):
 
 
 def render(area_id: str, model_version: str, config_sha: str, dates: list[date], stats: dict, cov: dict, mono: list[dict],
-           dist: dict, drivers: dict, sens: list[dict], chl_dep: dict, stab: list[dict], measured_on: str, commit: str) -> str:
+           dist: dict, drivers: dict, sens: list[dict], chl_dep: dict, stab: list[dict], measured_on: str, commit: str,
+           stab_drv: list[dict] | None = None) -> str:
     L = [f"# FSI v1 back-test: coverage and sanity checks ({area_id})", "",
          f"> **{checks.NOT_ACCURACY}**", "",
          f"MEASURED {measured_on} at commit `{commit}`, model `{model_version}`, config_sha256 `{config_sha[:16]}`. Every weight and "
@@ -75,6 +76,12 @@ def render(area_id: str, model_version: str, config_sha: str, dates: list[date],
         for g in sorted(by_gap):
             rs = by_gap[g]
             L.append(f"| {g} | {len(rs)} | {_p(checks._mean(r['spearman'] for r in rs))} | {_pct(checks._mean(r['top20_overlap'] for r in rs))} |")
+        L.append("")
+    if stab_drv:
+        L += ["Where the change comes from: the same neighbouring-date stability with one non-SST weight switched off at a time.", "",
+              "| Weight off | Pairs | Mean Spearman | Mean top-20% kept |", "| --- | --- | --- | --- |"]
+        for r in stab_drv:
+            L.append(f"| {r['off']} | {r['pairs']} | {_p(r['spearman'])} | {_pct(r['top20_overlap'])} |")
         L.append("")
     L += ["## 8. What this does not show", "",
           "- Whether FSI predicts where fish are. Hit rate (A9) cannot be measured without catch logs or fishing-activity data; "
