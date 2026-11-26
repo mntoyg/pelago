@@ -3,6 +3,12 @@
 Thumbs.db
 node_modules
 
+# Python backend artifacts
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+
 # environment and secret files (the repository is public)
 .env
 .env.*

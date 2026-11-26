@@ -300,7 +300,7 @@ item 3). **A spot with `legal_status: "incomplete"` is a trial output, "not for 
 | `source_id` | string | config fetcher id | **yes** | which fetcher delivered it (primary or a fallback; a fallback is visible here) |
 | `product` | string | `daily`\|`8day`\|`null` | **yes** | chlorophyll only: cloud-gap composites are labelled (G p.6); `null` elsewhere |
 
-`Forecast` (wave, wind): `value` (number, **null**), `issued_at` (UTC timestamp, **null**; forecast issue time),
+`Forecast` (wave, wind): `value` (number, **null**), `issued_at` (UTC timestamp, **null**; retrieval time, because Open-Meteo does not return a forecast issue time),
 `age_hours` (integer >= 0, **null**), `window_local` (`["04:00","14:00"]`, no), `source_id` (string, **null**).
 
 `SeaState`:
@@ -568,7 +568,7 @@ was independently confirmed here.**
 | Variable | This week's fetcher (prototype's dataset) | A7 says | Route | Status |
 | --- | --- | --- | --- | --- |
 | SST | NOAA ERDDAP `jplMURSST41` (NASA JPL MUR) | commercial: yes | A, B | per A7; **UNVERIFIED** by us |
-| Chlorophyll | NOAA ERDDAP `nesdisVHNchlaDaily` (VIIRS) | A7 lists Sentinel-3 OLCI (commercial yes, with Copernicus attribution), PACE, MODIS; **VIIRS is not in A7** | A (B unknown) | **UNVERIFIED** |
+| Chlorophyll | NOAA ERDDAP `noaacwNPPVIIRSchlaDaily` (VIIRS) | A7 lists Sentinel-3 OLCI (commercial yes, with Copernicus attribution), PACE, MODIS; **VIIRS is not in A7** | A (B unknown) | **UNVERIFIED** |
 | Depth | NOAA ERDDAP `ETOPO_2022_v1_15s` | A7 lists GEBCO (not for navigation); **ETOPO is not in A7** | A (B unknown) | **UNVERIFIED** |
 | Waves, wind | Open-Meteo Marine and Forecast | prototype only; **not commercial without a paid plan** | **A only** | per A7; disabled under route B |
 | Land | Natural Earth | commercial: yes | A, B | per A7 |

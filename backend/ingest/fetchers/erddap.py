@@ -12,6 +12,10 @@ from ..timeutil import UTC, local_date_of, local_day_end_utc, parse_utc
 from .base import FetchError, HttpGet
 
 BASE = "https://coastwatch.pfeg.noaa.gov/erddap/griddap/"
+DATASET_BASES = {
+    "noaacwNPPVIIRSchlaDaily": "https://coastwatch.noaa.gov/erddap/griddap/",
+    "noaacwN20VIIRSchlaDaily": "https://coastwatch.noaa.gov/erddap/griddap/",
+}
 
 
 def iso_z(dt: datetime) -> str:
@@ -20,7 +24,7 @@ def iso_z(dt: datetime) -> str:
 
 def url(dataset: str, variables_and_constraints: str) -> str:
     """dataset.csv?<query>; brackets are percent-encoded, parentheses and colons stay as ERDDAP expects."""
-    return f"{BASE}{dataset}.csv?" + quote(variables_and_constraints, safe="()-:.,")
+    return f"{DATASET_BASES.get(dataset, BASE)}{dataset}.csv?" + quote(variables_and_constraints, safe="()-:.,")
 
 
 def parse_csv(body: bytes, required: tuple[str, ...]) -> list[dict[str, str]]:

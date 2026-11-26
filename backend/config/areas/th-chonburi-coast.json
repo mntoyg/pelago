@@ -29,11 +29,11 @@
   "legal": { "layers_required": ["land", "eez_buffer_5km", "disputed", "protected", "seasonal_closure", "boat_class_zones"],
              "layers_loaded": ["land", "eez_buffer_5km"], "incomplete_policy": "label", "eez_buffer_km": 5 },
   "sources": {
-    "sst":       [ { "source_id": "erddap_mur_sst",       "role": "primary" } ],
-    "chl":       [ { "source_id": "erddap_viirs_chl",     "role": "primary" },
-                   { "source_id": "erddap_viirs_n20_chl", "role": "fallback" } ],
-    "depth":     [ { "source_id": "erddap_etopo_depth",   "role": "primary" } ],
-    "wave_wind": [ { "source_id": "open_meteo_marine",    "role": "primary" } ]
+    "sst":       [ { "source_id": "erddap_mur_sst",       "role": "primary", "hosts": ["coastwatch.pfeg.noaa.gov"] } ],
+    "chl":       [ { "source_id": "erddap_viirs_chl",     "role": "primary", "hosts": ["coastwatch.noaa.gov"] },
+                   { "source_id": "erddap_viirs_n20_chl", "role": "fallback", "hosts": ["coastwatch.noaa.gov"] } ],
+    "depth":     [ { "source_id": "erddap_etopo_depth",   "role": "primary", "hosts": ["coastwatch.pfeg.noaa.gov"] } ],
+    "wave_wind": [ { "source_id": "open_meteo_marine",    "role": "primary", "hosts": ["marine-api.open-meteo.com", "api.open-meteo.com"] } ]
   },
   "ingest": {
     "min_valid_fraction": { "sst": 0.5 },

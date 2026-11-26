@@ -1,4 +1,4 @@
-"""Chlorophyll-a: VIIRS S-NPP near-real-time daily via NOAA ERDDAP, dataset nesdisVHNchlaDaily, variable chlor_a (mg m^-3).
+"""Chlorophyll-a: VIIRS S-NPP near-real-time daily via NOAA ERDDAP, dataset noaacwNPPVIIRSchlaDaily, variable chlor_a (mg m^-3).
 
 MEASURED 2026-11-26: axes time, altitude (one value 0.0), latitude (DESCENDING, so ranges are written high:low),
 longitude; 0.0375 degree pixels; NaN where cloudy; newest time was 11 days old. Per cell: the newest day inside the
@@ -20,7 +20,7 @@ class ErddapViirsChl:
     source_id = "erddap_viirs_chl"
     variable = "chl"
     routes = ("A", "B")
-    dataset = "nesdisVHNchlaDaily"
+    dataset = "noaacwNPPVIIRSchlaDaily"
 
     def __init__(self, http: HttpGet = http_get, sleep=_time.sleep):
         self._http, self._sleep = http, sleep

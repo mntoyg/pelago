@@ -227,14 +227,14 @@ def test_http_errors_become_short_codes_without_url_or_text(monkeypatch):
         raise requests.ConnectionError(f"HTTPSConnectionPool: {secret_url} failed")
     monkeypatch.setattr(requests, "get", boom)
     with pytest.raises(FetchError) as e:
-        http_get("https://example.test/x", 1)
+        http_get("https://example.test/x", 1, allowed_hosts=("example.test",))
     assert e.value.code == "network_error" and "SECRET123" not in str(e.value) and "pa55w0rd" not in repr(e.value)
     monkeypatch.setattr(requests, "get", lambda *a, **k: (_ for _ in ()).throw(requests.Timeout("slow " + secret_url)))
     with pytest.raises(FetchError) as e2:
-        http_get("https://example.test/x", 1)
+        http_get("https://example.test/x", 1, allowed_hosts=("example.test",))
     assert e2.value.code == "timeout"
     with pytest.raises(FetchError) as e3:
-        http_get("http://example.test/x", 1)                            # plain http is refused
+        http_get("http://example.test/x", 1, allowed_hosts=("example.test",))  # plain http is refused
     assert e3.value.code == "bad_url"
 
 
@@ -242,6 +242,24 @@ def test_fetch_error_code_is_sanitised():
     assert FetchError("https://host/?token=abc").code == "error"
     assert FetchError("http_503").code == "http_503" and FetchError("http_503").retryable
     assert not FetchError("empty_grid").retryable
+
+
+def test_http_redirect_to_unlisted_host_is_refused_before_following(monkeypatch):
+    calls = []
+    class Response:
+        status_code = 302
+        headers = {"Location": "https://attacker.invalid/collect"}
+        def __enter__(self): return self
+        def __exit__(self, *a): return False
+    def fake_get(url, **kwargs):
+        calls.append((url, kwargs))
+        return Response()
+    monkeypatch.setattr(requests, "get", fake_get)
+    with pytest.raises(FetchError) as e:
+        http_get("https://example.test/start", 1, allowed_hosts=("example.test",))
+    assert e.value.code == "host_not_allowed"
+    assert [url for url, _ in calls] == ["https://example.test/start"]
+    assert calls[0][1]["allow_redirects"] is False
 
 
 def test_oversized_response_is_cut_off(monkeypatch):
@@ -254,5 +272,5 @@ def test_oversized_response_is_cut_off(monkeypatch):
                 yield b"x" * 1_000_000
     monkeypatch.setattr(requests, "get", lambda *a, **k: Resp())
     with pytest.raises(FetchError) as e:
-        http_get("https://example.test/x", 1)
+        http_get("https://example.test/x", 1, allowed_hosts=("example.test",))
     assert e.value.code == "too_large"

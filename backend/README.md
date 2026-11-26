@@ -57,7 +57,7 @@ backend/
       base.py                   Fetcher interface: fetch(area, date) -> GridLayer | raises FetchError(code)
       registry.py               maps source_id in config to a class; enforces licence_route (see section 3.3)
       erddap_mur_sst.py         jplMURSST41
-      erddap_viirs_chl.py       nesdisVHNchlaDaily
+      erddap_viirs_chl.py       noaacwNPPVIIRSchlaDaily
       erddap_etopo_depth.py     ETOPO_2022_v1_15s
       open_meteo_marine.py      route A only; sea-window maxima of wave and wind
     masks/
@@ -269,9 +269,10 @@ set DATABASE_URL_INGEST=<write-role URL, from the environment only>
 ```
 
 Differences from the design in sections 2 to 4: one module `open_meteo_marine.py` reads both Open-Meteo endpoints (waves from
-Marine, wind from Forecast); the chlorophyll chain has a NOAA-20 fallback (`erddap_viirs_n20_chl`, owner may remove it);
+Marine, wind from Forecast); the chlorophyll chain keeps the NOAA-20 fallback (`erddap_viirs_n20_chl`) per owner decision D11;
 the ingest also stores `sst_grad_c_per_km` because only the ingest sees the full-resolution SST; the `ingest` block in the area
-file holds fetch-only settings (the API's config loader must accept or ignore it). Carry-forward (latest stored value with its own
+file holds fetch-only settings (the API's config loader must accept or ignore it). The weather timestamp returned as
+`issued_at` is the retrieval time; Open-Meteo does not provide a forecast issue time. Carry-forward (latest stored value with its own
 age) applies to SST, chlorophyll and depth, never to wave/wind. Not built here: API, FSI, masks, scheduling.
 
 ## 10. FSI v1 and the back-test as built (2026-11-26, branches `feature/fsi-v1`, `feature/backtest`)

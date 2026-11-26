@@ -22,6 +22,7 @@ _TOP = {"area_id", "name", "names", "country_code", "timezone", "bbox", "licence
         "boat_classes", "fsi", "max_age_days", "legal", "sources", "ingest", "schedule", "notices"}
 _VARS = ("sst", "chl", "depth", "wave_wind")
 _AREA_ID = re.compile(r"[a-z]{2}(-[a-z0-9]+)+")
+_HOST = re.compile(r"(?=.{1,253}$)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}")
 _SECRET = re.compile(r"(api[_-]?key|token|secret|passw|://[^/\s]*:[^@/\s]*@|bearer\s)", re.I)
 
 
@@ -61,6 +62,13 @@ class AreaConfig:
 
     def chain(self, variable: str) -> list[SourceRef]:
         return [SourceRef(s["source_id"], s["role"]) for s in self.raw["sources"][variable]]
+
+    def allowed_hosts(self, source_id: str) -> tuple[str, ...]:
+        for chain in self.raw["sources"].values():
+            for source in chain:
+                if source["source_id"] == source_id:
+                    return tuple(source["hosts"])
+        return ()
 
     def cell_ids(self) -> list[int]:
         lon0, lat0, lon1, lat1 = self.bbox
@@ -162,9 +170,14 @@ def validate(raw: dict[str, Any]) -> None:
         if not chain or chain[0].get("role") != "primary":
             raise ConfigError(f"{var}: the first source must be the primary")
         for s in chain:
-            if set(s) != {"source_id", "role"} or s["role"] not in ("primary", "fallback") \
+            if set(s) != {"source_id", "role", "hosts"} or s["role"] not in ("primary", "fallback") \
                     or not re.fullmatch(r"[a-z][a-z0-9_]{1,63}", str(s["source_id"])):
                 raise ConfigError(f"{var}: bad source entry")
+            hosts = s["hosts"]
+            if (not isinstance(hosts, list) or not hosts
+                    or any(not isinstance(host, str) or not _HOST.fullmatch(host) for host in hosts)
+                    or len(set(hosts)) != len(hosts)):
+                raise ConfigError(f"{var}: source hosts must be unique lowercase DNS hostnames")
     ing = raw.get("ingest", {})
     need = {"min_valid_fraction", "margin_pixels", "open_meteo", "request_pause_s", "http_timeout_s"}
     if set(ing) != need:
