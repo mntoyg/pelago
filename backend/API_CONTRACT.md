@@ -263,7 +263,7 @@ item 3). **A spot with `legal_status: "incomplete"` is a trial output, "not for 
 | `subscores` | object | keys `sst`, `front`, `chl`, `depth`, `moon`, `season`, each a `SubScore` | no | the explanation of `fsi` (AGENTS.md section 6, rule 3: show inputs and limits) |
 | `confidence` | string | `high`\|`medium`\|`low` | no | rule in 4.6 |
 | `confidence_cap` | string | `"no_verified_catch_logs"` | **yes** | non-null when the cap lowered or limits the result |
-| `confidence_reasons` | string[] | codes: `sst_missing`, `sst_stale`, `chl_missing`, `chl_stale`, `depth_missing`, `front_missing`, `no_verified_catch_logs` | no (may be `[]`) | why not higher |
+| `confidence_reasons` | string[] | codes: `sst_missing`, `sst_stale`, `chl_missing`, `chl_stale`, `depth_missing`, `front_missing`, `no_verified_catch_logs`; and, added 2026-11-26 (additive), `sst_invalid`, `front_invalid`, `chl_invalid`, `depth_invalid`: the input exists but was refused (not finite, out of range, no or naive timestamp, or dated after the end of the local `date`), so it carries weight 0 | no (may be `[]`) | why not higher |
 | `model_version` | string | `fsi-v1.0.0` pattern | no | scoring code version that produced `fsi` |
 | `observations` | object | see below | no | the inputs, each with its date and age |
 | `sea_state` | object | `SeaState` | no | for this cell and boat class |
