@@ -135,6 +135,9 @@ Front end and quality:
 | D5 | Backend: **Python FastAPI + Supabase (PostgreSQL/PostGIS)** | needs a place to run FastAPI (owner action) |
 | D6 | AI focus this week: **server-side FSI + back-testing**; fish ID stays a labelled mock-up | the fish screen keeps saying it is not real AI |
 | D7 | The three reference documents are **not stored** in the repository; `ARCHITECTURE.md` is the summary | nothing to commit |
+| D8 | Spot spacing: **10 km** minimum between recommended spots (config value; the guide's 5 km does nothing on the 0.05 degree grid) | `min_spacing_km: 10` in the area config |
+| D9 | If the API is unreachable (network error or 5xx, never after a 200) the front end shows today's in-browser demo path, labelled "demo, not filtered, not a recommendation" | front end task must implement the label and the 200-never rule |
+| D10 | Boat classes this week: `small` only in the UI; `medium` stays in the area config | UI uses `small` |
 
 ### Still open
 
@@ -148,12 +151,12 @@ Front end and quality:
 5. Global Fishing Watch token for the back-test: will the owner register one (internal use only)?
 6. ~~Repository layout for the backend~~: `backend/` in this repository, as proposed; merged 2026-11-26 with the contract. Tell the PM if you want a separate repository instead.
 7. Tell the teammate who owns `upstream` (TASK-005) before they edit `app.js`.
-8. **Spot spacing.** The guide's "at least 5 km apart" does nothing on the 0.05 degree grid (cell centres are already
+8. ~~**Spot spacing.**~~ **Decided D8 (10 km).** The guide's "at least 5 km apart" does nothing on the 0.05 degree grid (cell centres are already
    5.4 km apart), so the top 5 spots may be adjacent cells. The backend seat and the PM recommend 10 km in config.
-9. **Front-end fallback when the API is down.** Show today's in-browser demo path clearly labelled "demo, not filtered"
+9. ~~**Front-end fallback when the API is down.**~~ **Decided D9 (labelled demo path, never after a 200).** Show today's in-browser demo path clearly labelled "demo, not filtered"
    (the seat's default, only on a network error or a 5xx, never on a 200), or show nothing? The in-browser path has no
    legal, land or sea-state filter.
-10. **Boat classes this week:** `small` only, or `small` and `medium` (the guide gives thresholds for both; the maximum
+10. ~~**Boat classes this week:**~~ **Decided D10 (`small` in the UI).** `small` only, or `small` and `medium` (the guide gives thresholds for both; the maximum
     range for `medium` is not given).
 11. Other backend decisions with defaults are listed in `backend/README.md` section 5 (15 items); silence means the default.
 
