@@ -202,7 +202,7 @@ workflow file are owner actions, so no workflow file and no secret are committed
 - [ ] A failed step stops the later steps, leaves no half-written `recommendations` row, and the next run recovers; tested with an injected failure and a mutation check
 - [ ] `backend/README.md` explains how to run it from a host's cron or scheduler (no host chosen yet, open question 2)
 
-**CX-4 AI: FSI checks and stability measurements** (branch `feature/fsi-checks`; files: `backend/fsi/`,
+**CX-4 AI: FSI checks and stability measurements — MOVED from Codex to Claude AIE 01 on 2026-11-27 (see 4.5; Codex skips this item)** (branch `feature/fsi-checks`; files: `backend/fsi/`,
 `backend/backtest/`, one new report under `backend/docs/`; numbers only, no accuracy claim)
 
 - [ ] F-16: the SST temperature-front input is checked on one real SST field for the area (one small ERDDAP request, within the request limits already in the back-test brief); the report shows the gradient map statistics, edge-of-grid and land-adjacent behaviour, and says plainly if the front looks wrong
@@ -230,8 +230,7 @@ State to start from:
 - Owner decisions still open (section 6): 1, 2, 3, 12, 13, 14. Owner actions still open: Supabase project and roles,
   FastAPI host account, optional Global Fishing Watch token, confirm the dataset downloads of the mask seat.
 
-Order for Codex: CX-1, then CX-2, then CX-3, then CX-4 (CX-4 may go before CX-3 if the CX-3 hook question is still
-waiting for the PM). After each item: tick your boxes (section 4.3 rules), push your branch to `origin`, print
+Order for Codex: CX-1 (with CX-1b), then CX-2, then CX-3. CX-4 now belongs to Claude AIE 01 (section 4.5). After each item: tick your boxes (section 4.3 rules), push your branch to `origin`, print
 `git ls-remote origin <branch>`, and send the report (Thai, `AGENTS.md` section 8) to the owner. The PM reviews by
 reproducing; nothing goes to `main` without the owner's word.
 
@@ -246,6 +245,38 @@ pass; then the demo script.
 - [ ] F-21: tests for the empty-allowlist refusal, the config `hosts` validation (empty, duplicate, uppercase, bad DNS name), userinfo and non-443 port, `bad_redirect` (no `Location`) and `redirect_limit` (three hops); mutation checks M4, M7, M8 go red
 - [ ] F-22: confirm the two chlorophyll dataset ids and the host live (`.das` plus one small data request, within the request limits), quote the output, fix the fetcher if the layout differs, and record the new `config_sha256`; if `coastwatch.noaa.gov` still answers 5xx, say so and leave this box open
 
+
+### 4.5 Claude seats: AIE 01 and SWE 01 (assigned by the PM on the owner's request, 2026-11-27)
+
+Both seats work in **their own worktree** (`git worktree add .claude/worktrees/<name> -b <branch> origin/main`), not in
+the main checkout, and push their branch to `origin` with the remote named. They tick only their own boxes here, on
+their own branch, like Codex (section 4.3); the PM adds `PM-checked` after reproducing. The Claude weekly meter is shared
+by every Claude chat: read it before starting and keep to the day's ceiling.
+
+**AI-1 (Claude AIE 01 = Pelago AIE 01; branch `feature/fsi-checks`; this is the former CX-4)**
+
+Files: new files under `backend/backtest/` and `backend/docs/`, and `backend/fsi/` only if a defect forces it. Do **not**
+edit `backend/backtest/inputs.py` or `backend/backtest/run.py`: Codex fixes the allowlist problem there (F-20, CX-1b);
+rebase on `main` after that merge before you re-run the live parts. Numbers only, no accuracy claim, default weights
+unchanged.
+
+- [ ] F-16: check the SST temperature-front input on one real SST field for the area (one small ERDDAP request on `jplMURSST41`, within the request limits of the back-test brief): gradient statistics, grid-edge and land-adjacent behaviour; say plainly if the front looks wrong
+- [ ] Open question 13: with the existing harness measure week-to-week agreement for (a) today's weights, (b) a lower front weight, (c) the front smoothed over several days, same metrics as REVIEW-004 (Spearman, top-20% overlap vs random); the owner decides, the config default is not changed
+- [ ] The report states what each result does and does not show; chlorophyll-empty behaviour (open question 12) is shown unchanged
+
+**FE-1 (Claude SWE 01 = Pelago SWE 01; branch `feature/frontend-api-adapter`; independent of Codex's API)**
+
+Files: `src/`, `index.html` (minimal), `styles.css` (small), `README.md` front-end section, one mock server under
+`tools/api-mock/` (Python standard library only, labelled ILLUSTRATIVE, added to `.vercelignore`). Spec: `backend/API_CONTRACT.md`
+sections 4, 5 and 8, and decisions D9, D10 in section 6. No build step, no dependency, no change to what the UI promises.
+
+- [ ] `src/services/api.js` reads `GET /v1/areas/{area_id}/spots` (`boat_class=small`) from a base URL in `src/config.js`; with no base URL set the page behaves exactly as today (compare the 12 screens against the baseline)
+- [ ] D9: only a network error or a 5xx falls back to today's in-browser path, labelled "demo, not filtered, not a recommendation"; a `200` never falls back, including `200` with empty `spots`, where the Thai text for `status` (`no_run`, `no_data`, `withheld_legal_incomplete`, `withheld_sea_red`, ...) is shown; a test goes red when the guard is removed
+- [ ] The popup and the sidebar use one confidence value (the API's; label "demo" on the fallback path), closing the two-rule finding (section 5 backlog); data age and the "trial: legal layers incomplete, not for real use" label are shown (one constant, so the owner's decision on open question 3 is a one-line change)
+- [ ] Verified in a real browser over `http://` against the mock server (200 ok, 200 empty, 304, 500, network down), console clean, every local file 200; report what was not tested
+
+Not assigned yet (the PM keeps them): review of `feature/mask-and-pick`, review of Codex branches, the red-team pass by a
+separate reviewer seat, the demo script, deployment (owner accounts needed).
 
 ### 4.2 Other next steps
 
