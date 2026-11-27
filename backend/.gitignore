@@ -15,3 +15,6 @@ __pycache__/
 data/
 *.nc
 *.zarr/
+# Marine Regions polygons are fetched at build time (backend/masks/fetch_eez.py); the provider asks that its downloads are not re-published
+config/layers/*/eez.geojson
+config/layers/*/internal_waters.geojson

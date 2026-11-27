@@ -37,8 +37,9 @@ Items marked **PROPOSED** are the PM's suggestions and are not agreed scope unti
 | TASK-007 | Backend API contract, draft PostGIS schema and service layout (design only) by the first backend seat | Reviewed by the PM, see REVIEW-002. Merged into `main` on 2026-11-26 (fast-forward from `feature/backend-contract` `93b82e0`). Root `.gitignore` now ignores `.env*` and key files; new `.vercelignore` keeps `backend/` and env files out of CLI deploys |
 | TASK-008 | Backend daily ingest for `th-chonburi-coast` by the second backend seat: dry run of the public sources, area config, one fetcher per source behind a swappable interface, aggregation onto the 0.05 degree grid, writer, 101 tests, mutation log | Reviewed by the PM, see REVIEW-003. Merged into `main` on 2026-11-26 (fast-forward from `feature/backend-ingest` `73d2f00`, with the PM's review notes) |
 | TASK-009 | FSI v1 on the server and the first back-test by the AI-engineer seat (Pelago AIE 01): `backend/fsi/`, `backend/backtest/`, strict `fsi` config validation, `.gitattributes` for the config files, 115 more tests, two mutation logs, one report | Reviewed by the PM, see REVIEW-004. Merged into `main` on 2026-11-26 (fast-forward from `feature/backtest` `5e829f5`, which contains `feature/fsi-v1` `baedcde`, plus the PM's review notes) |
-| TASK-010 | Land mask, EEZ mask, sea-state rule and pick step by the mask seat: `backend/masks/`, `backend/pick/`, `backend/compute/` (order mask, fsi, pick), `backend/legal.py`, `backend/seastate.py`, 7 test files, `backend/docs/mask-pick-mutation-log.md`, `land.geojson` (Natural Earth 1:10m, public domain, 3.6 KB, clipped) and `PROVENANCE.md` | **REPORTED, NOT reviewed, NOT merged.** Branch `feature/mask-and-pick` = `3a357a2` on `origin` (MEASURED 2026-11-26 by the PM: `git ls-remote origin` = `3a357a2`; 2 commits, 29 files, all under `backend/`). The PM has not run the tests or the mutation checks. The EEZ layer (Marine Regions, CC BY 4.0) is **not committed** and is fetched at build time by `backend/masks/fetch_eez.py`; the seat's note says the owner chose build-time download. The PM did not see that approval in this chat: the owner should confirm that the Natural Earth and Marine Regions downloads were approved |
+| TASK-010 | Land mask, EEZ mask, sea-state rule and pick step by the mask seat: `backend/masks/`, `backend/pick/`, `backend/compute/` (order mask, fsi, pick), `backend/legal.py`, `backend/seastate.py`, 7 test files, `backend/docs/mask-pick-mutation-log.md`, `land.geojson` (Natural Earth 1:10m, public domain, 3.6 KB, clipped) and `PROVENANCE.md` | **Reviewed by the PM, see REVIEW-007: approved for merge; not yet merged (waits for the owner's word).** Branch `feature/mask-and-pick` = `3a357a2` on `origin` (MEASURED 2026-11-26 by the PM: `git ls-remote origin` = `3a357a2`; 2 commits, 29 files, all under `backend/`). The PM has not run the tests or the mutation checks. The EEZ layer (Marine Regions, CC BY 4.0) is **not committed** and is fetched at build time by `backend/masks/fetch_eez.py`; the seat's note says the owner chose build-time download. The PM did not see that approval in this chat: the owner should confirm that the Natural Earth and Marine Regions downloads were approved |
 | TASK-011 | Codex work package written into this file (section 4.3) and the mask work put on hold, by the PM | MEASURED 2026-11-26: `main` = `origin/main` = `34ca635` |
+| TASK-012 | The owner's nine-file documentation set (Standing Rule 3) and the project skills folder (Rule 4): added `CURSOR.md`, `PRD.md`, `API.md`, `.github/copilot-instructions.md` as short truthful skeletons, linked them from `AGENTS.md`, created `.claude/skills/` with one skill (`review-branch-by-reproduction`) and a local `.codex/skills` junction (ignored by git) | MEASURED 2026-11-27: all nine paths exist and are not empty (`Docs: 9/9`). Not yet merged; the PRD and API files are skeletons the owner should read |
 
 ## 4. Next up
 
@@ -67,8 +68,8 @@ Backend slice for the demo (plan 4.1, deliverables 1 to 7)
 - [x] Writer into `grid_daily` and `job_runs`; retry 3 times, fallback, carry-forward with the value's own age
 - [x] Ingest tests: 101 pass (reproduced by the PM against a real PostGIS); mutation checks reproduced by the PM (5 of 5 red)
 - [ ] Daily scheduler for the ingest (not built)
-- [ ] Land mask and EEZ mask, and the test "no recommended spot in a forbidden cell" (deliverable 3) — **built by the mask seat on `feature/mask-and-pick` `3a357a2` (REPORTED, unreviewed); the owner put further work on hold on 2026-11-26.** Stays `[ ]` until the PM reproduces it (review in the next PM session, after the weekly reset)
-- [ ] Pick step (3 to 5 spots, 10 km apart, writes `recommendations`) — same branch, same status
+- [x] Land mask and EEZ mask, and the test "no recommended spot in a forbidden cell" (deliverable 3): built on `feature/mask-and-pick` `3a357a2`, PM-checked 2026-11-27 (REVIEW-007); **not yet merged into `main`**; protected zones, closed seasons, disputed areas and boat-class zones stay unknown (NULL) and the area stays labelled trial
+- [x] Pick step (3 to 5 spots, 10 km apart, writes `recommendations`): same branch, PM-checked 2026-11-27, not yet merged
 - [x] FSI v1 on the server: six sub-scores, confidence, per-cell explanation (deliverable 4); 216 tests pass (PM run), 10 PM mutations red
 - [ ] API (FastAPI) reading the database (deliverable 1)
 - [x] Back-test report (deliverable 5): coverage and sanity checks only, **not evidence of accuracy** (no catch logs, no Global Fishing Watch token); 41 of 52 dates
@@ -177,16 +178,10 @@ Rules for every item:
 **CX-1 Backend hygiene** (branch `fix/backend-hygiene`; files: `.gitignore`, `backend/ingest/fetchers/`,
 `backend/API_CONTRACT.md`, `backend/README.md`, `backend/config/`; small, do it first)
 
-- [x] Root `.gitignore` ignores `.venv/`, `__pycache__/`, `*.pyc`, `.pytest_cache/` (F-8); `git status` is clean after a test run (9a7768f, 2026-11-26)
-- [x] Fetchers use the canonical ERDDAP dataset ids, and `http_get` in `backend/ingest/fetchers/base.py` no longer follows redirects blindly: only `https`, only the hosts already named in the area config, at most 2 hops; a test sends a redirect to another host and it is refused for that reason (F-9) (9a7768f, 2026-11-26)
-- [x] The two lines that say the owner "may remove" the NOAA-20 fallback now say it is kept (D11) (9a7768f, 2026-11-26)
-- [x] `wx_issued_at` is reworded in the contract and README as the retrieval time, not a forecast issue time (F-10) (9a7768f, 2026-11-26)
-
-**CX-1b Backend hygiene follow-up** (Codex, same branch `fix/backend-hygiene`, assigned 2026-11-27)
-
-- [x] F-20: `PoliteHttp` uses the area config's HTTP allowlist; its back-test request test goes red when the wiring is removed (PM-checked in the uncommitted worktree diff based on `d6e860c`, 2026-11-27; see REVIEW-009)
-- [x] F-21: cover empty allowlist, invalid config hosts, userinfo/non-443 port, missing redirect location, and three-hop redirect limit; M4/M7/M8 mutation checks go red (PM-checked in the uncommitted worktree diff based on `d6e860c`, 2026-11-27; see REVIEW-009)
-- [x] F-22: both NOAA chlorophyll datasets and `coastwatch.noaa.gov` verified live 2026-11-27: both `.das` requests returned HTTP 200; bounded area CSV requests through `http_get` returned HTTP 200 and parsed 16 rows each. Sample: `time,altitude,latitude,longitude,chlor_a` and `2026-11-15T12:00:00Z,0.0,13.10625,100.89375,NaN` (the sample cell was missing data; this verifies endpoint/layout, not a numeric chlorophyll value). Config SHA-256: `669dfcd1b867d6b3b4173ba01c6e3a599afa1ad6e0e25bf016118ebfe5413607` (PM-measured; see REVIEW-009)
+- [ ] Root `.gitignore` ignores `.venv/`, `__pycache__/`, `*.pyc`, `.pytest_cache/` (F-8); `git status` is clean after a test run
+- [ ] Fetchers use the canonical ERDDAP dataset ids, and `http_get` in `backend/ingest/fetchers/base.py` no longer follows redirects blindly: only `https`, only the hosts already named in the area config, at most 2 hops; a test sends a redirect to another host and it is refused for that reason (F-9)
+- [ ] The two lines that say the owner "may remove" the NOAA-20 fallback now say it is kept (D11)
+- [ ] `wx_issued_at` is reworded in the contract and README as the retrieval time, not a forecast issue time (F-10)
 
 **CX-2 FastAPI read API** (branch `feature/backend-api`; new folder `backend/api/`; the contract is the spec, section
 12 of `backend/API_CONTRACT.md` lists the tests; asks the owner once for `fastapi`, `uvicorn`, `httpx` from PyPI)
@@ -208,7 +203,7 @@ workflow file are owner actions, so no workflow file and no secret are committed
 - [ ] A failed step stops the later steps, leaves no half-written `recommendations` row, and the next run recovers; tested with an injected failure and a mutation check
 - [ ] `backend/README.md` explains how to run it from a host's cron or scheduler (no host chosen yet, open question 2)
 
-**CX-4 AI: FSI checks and stability measurements** (branch `feature/fsi-checks`; files: `backend/fsi/`,
+**CX-4 AI: FSI checks and stability measurements — MOVED from Codex to Claude AIE 01 on 2026-11-27 (see 4.5; Codex skips this item)** (branch `feature/fsi-checks`; files: `backend/fsi/`,
 `backend/backtest/`, one new report under `backend/docs/`; numbers only, no accuracy claim)
 
 - [ ] F-16: the SST temperature-front input is checked on one real SST field for the area (one small ERDDAP request, within the request limits already in the back-test brief); the report shows the gradient map statistics, edge-of-grid and land-adjacent behaviour, and says plainly if the front looks wrong
@@ -236,8 +231,7 @@ State to start from:
 - Owner decisions still open (section 6): 1, 2, 3, 12, 13, 14. Owner actions still open: Supabase project and roles,
   FastAPI host account, optional Global Fishing Watch token, confirm the dataset downloads of the mask seat.
 
-Order for Codex: CX-1, then CX-2, then CX-3, then CX-4 (CX-4 may go before CX-3 if the CX-3 hook question is still
-waiting for the PM). After each item: tick your boxes (section 4.3 rules), push your branch to `origin`, print
+Order for Codex: CX-1 (with CX-1b), then CX-2, then CX-3. CX-4 now belongs to Claude AIE 01 (section 4.5). After each item: tick your boxes (section 4.3 rules), push your branch to `origin`, print
 `git ls-remote origin <branch>`, and send the report (Thai, `AGENTS.md` section 8) to the owner. The PM reviews by
 reproducing; nothing goes to `main` without the owner's word.
 
@@ -245,6 +239,45 @@ Next for the Claude PM (not Codex): review `feature/mask-and-pick` after the wee
 mutation checks on copies, check the provenance and licence note against the live pages), then merge on the owner's
 word; then the front-end adapter (Pelago SWE 01, decision D9) once CX-2 is merged; then a reviewer seat for the red-team
 pass; then the demo script.
+
+**CX-1b (Codex, same branch `fix/backend-hygiene`; do before CX-2, findings in REVIEW-005):**
+
+- [x] F-20: `PoliteHttp` (and any other caller of `http_get`) works against the real allowlist: a test drives the back-test client against a faked `requests.get` and shows the request reaches the allowed host; the same test goes red when the fix is removed (PM-checked at source commit `23d8061`, 2026-11-27; see REVIEW-009)
+- [x] F-21: tests for the empty-allowlist refusal, the config `hosts` validation (empty, duplicate, uppercase, bad DNS name), userinfo and non-443 port, `bad_redirect` (no `Location`) and `redirect_limit` (three hops); mutation checks M4, M7, M8 go red (PM-checked at source commit `23d8061`, 2026-11-27; see REVIEW-009)
+- [x] F-22: both NOAA chlorophyll datasets and `coastwatch.noaa.gov` verified live 2026-11-27: both `.das` requests returned HTTP 200; bounded area CSV requests through `http_get` returned HTTP 200 and parsed 16 rows each. Sample: `time,altitude,latitude,longitude,chlor_a` and `2026-11-15T12:00:00Z,0.0,13.10625,100.89375,NaN` (the sample cell was missing data; this verifies endpoint/layout, not a numeric chlorophyll value). Config SHA-256: `669dfcd1b867d6b3b4173ba01c6e3a599afa1ad6e0e25bf016118ebfe5413607` (PM-measured; see REVIEW-009)
+
+
+### 4.5 Claude seats: AIE 01 and SWE 01 (assigned by the PM on the owner's request, 2026-11-27)
+
+Both seats work in **their own worktree** (`git worktree add .claude/worktrees/<name> -b <branch> origin/main`), not in
+the main checkout, and push their branch to `origin` with the remote named. They tick only their own boxes here, on
+their own branch, like Codex (section 4.3); the PM adds `PM-checked` after reproducing. The Claude weekly meter is shared
+by every Claude chat: read it before starting and keep to the day's ceiling.
+
+**AI-1 (Claude AIE 01 = Pelago AIE 01; branch `feature/fsi-checks`; this is the former CX-4)**
+
+Files: new files under `backend/backtest/` and `backend/docs/`, and `backend/fsi/` only if a defect forces it. Do **not**
+edit `backend/backtest/inputs.py` or `backend/backtest/run.py`: Codex fixes the allowlist problem there (F-20, CX-1b);
+rebase on `main` after that merge before you re-run the live parts. Numbers only, no accuracy claim, default weights
+unchanged.
+
+- [x] F-16: check the SST temperature-front input on one real SST field for the area (one small ERDDAP request on `jplMURSST41`, within the request limits of the back-test brief): gradient statistics, grid-edge and land-adjacent behaviour; say plainly if the front looks wrong (`b2a07c5`, report `f462aba`) PM-checked 2026-11-27 (code, tests and mutations reproduced; the live numbers are REPORTED, see REVIEW-006)
+- [x] Open question 13: with the existing harness measure week-to-week agreement for (a) today's weights, (b) a lower front weight, (c) the front smoothed over several days, same metrics as REVIEW-004 (Spearman, top-20% overlap vs random); the owner decides, the config default is not changed (`b2a07c5`, report `f462aba`) PM-checked 2026-11-27 (code, tests and mutations reproduced; the live numbers are REPORTED, see REVIEW-006)
+- [x] The report states what each result does and does not show; chlorophyll-empty behaviour (open question 12) is shown unchanged (`f462aba`) PM-checked 2026-11-27 (code, tests and mutations reproduced; the live numbers are REPORTED, see REVIEW-006)
+
+**FE-1 (Claude SWE 01 = Pelago SWE 01; branch `feature/frontend-api-adapter`; independent of Codex's API)**
+
+Files: `src/`, `index.html` (minimal), `styles.css` (small), `README.md` front-end section, one mock server under
+`tools/api-mock/` (Python standard library only, labelled ILLUSTRATIVE, added to `.vercelignore`). Spec: `backend/API_CONTRACT.md`
+sections 4, 5 and 8, and decisions D9, D10 in section 6. No build step, no dependency, no change to what the UI promises.
+
+- [ ] `src/services/api.js` reads `GET /v1/areas/{area_id}/spots` (`boat_class=small`) from a base URL in `src/config.js`; with no base URL set the page behaves exactly as today (compare the 12 screens against the baseline)
+- [ ] D9: only a network error or a 5xx falls back to today's in-browser path, labelled "demo, not filtered, not a recommendation"; a `200` never falls back, including `200` with empty `spots`, where the Thai text for `status` (`no_run`, `no_data`, `withheld_legal_incomplete`, `withheld_sea_red`, ...) is shown; a test goes red when the guard is removed
+- [ ] The popup and the sidebar use one confidence value (the API's; label "demo" on the fallback path), closing the two-rule finding (section 5 backlog); data age and the "trial: legal layers incomplete, not for real use" label are shown (one constant, so the owner's decision on open question 3 is a one-line change)
+- [ ] Verified in a real browser over `http://` against the mock server (200 ok, 200 empty, 304, 500, network down), console clean, every local file 200; report what was not tested
+
+Not assigned yet (the PM keeps them): review of `feature/mask-and-pick`, review of Codex branches, the red-team pass by a
+separate reviewer seat, the demo script, deployment (owner accounts needed).
 
 ### 4.2 Other next steps
 
@@ -336,6 +369,7 @@ Front end and quality:
     the top 20% of cells overlaps 25% against 20% for a random map) and that the temperature front causes most of it. Whether spots may
     move that much is a product decision. Options: accept it and say so in the demo (PM default), lower the front weight, or smooth
     the front over several days. The front itself is still unverified on real data (F-16).
+    **Result (REVIEW-006, 2026-11-27):** week-to-week Spearman 0.190 now; 0.305 with the front weight 0.10; 0.420 with 0.05; 0.468 with no front. Smoothing the front over 3 days changes almost nothing. Calmer does not mean more accurate. **Owner decision needed:** keep 0.20 and say so in the demo (PM default), or lower the front weight to 0.10.
 14. **More back-test requests?** The 250-request cap left 11 of 52 dates unfetched and no daily sample. Another budget is optional;
     it adds load on the public NOAA server and meter use. Default: no.
 
@@ -479,20 +513,156 @@ Not tested: Supabase, a scheduler, the API, the land and EEZ masks (cells that E
 
 `QA: 4 findings (C/H/M/L = 0/0/1/3) + 3 info - 216 tests and 10 mutations reproduced by the PM, config hash re-measured - not tested: Supabase, scheduler, API, masks, the seat's live back-test run`
 
-### REVIEW-009 — `fix/backend-hygiene` (CX-1b), uncommitted diff based on `d6e860c`, reviewed 2026-11-27 by the PM
+### REVIEW-005 — `fix/backend-hygiene` (CX-1, Codex), `main..d6e860c`, reviewed 2026-11-27 by the PM
 
-Verdict: **F-20/F-21/F-22 pass PM verification in the worktree; CX-1b may be committed and pushed as a work branch.** This does not merge the branch to `main`.
+Verdict: **do not merge yet; three follow-ups on the same branch (CX-1b in section 4.4).** The branch has 3 commits and
+13 files, all under `backend/` plus `.gitignore` and `TASK.md`; no file outside the item's scope. Method: `git archive`
+of `origin/fix/backend-hygiene` into a scratch folder, suite run, a search for every caller of `http_get`, live checks of
+the dataset ids, and mutation checks on copies (source hashes unchanged afterwards).
+
+| Check | Result | Label |
+| --- | --- | --- |
+| Suite on the branch (no database) | 202 passed, 15 skipped (the skipped ones need PostGIS; not run) | MEASURED 2026-11-27 |
+| `.gitignore`, NOAA-20 wording, `wx_issued_at` wording (contract, README, schema comment) | present; the schema change is a comment only | READ 2026-11-27 |
+| Redirect hardening in `http_get` (https only, no userinfo or odd port, host allowlist per source, at most 2 hops, `allow_redirects=False`) | matches F-9 as written; mutations M1 (host check removed), M5 (`allow_redirects=True`), M6 (scheme check removed) go **red** | MEASURED 2026-11-27 |
+| Mutations M4 (empty allowlist not refused), M7 (config `hosts` validation removed), M8 (userinfo/port check removed) | stay **green**: those three guards have no test | MEASURED 2026-11-27 |
+| New ERDDAP ids `noaacwNPPVIIRSchlaDaily` / `noaacwN20VIIRSchlaDaily` on `coastwatch.noaa.gov` | **could not be confirmed**: that host answered 502 on 4 requests (also its index page); the old ids now return 404 on `coastwatch.pfeg.noaa.gov`; the new ids are not in that server's catalogue search. `jplMURSST41` and `ETOPO_2022_v1_15s` still answer 200 | MEASURED 2026-11-27 |
+
+Findings:
+
+- **F-20 [Medium] The back-test breaks on every live request.** `PoliteHttp` (`backend/backtest/inputs.py:31`) defaults its
+  inner function to `http_get`, which now refuses a call without `allowed_hosts` (`FetchError("bad_config")`). The back-test
+  CLI builds it with no inner function (`backend/backtest/run.py:47`), and `registry.build` only supplies the allowlisted
+  function when no `http` is passed. Reproduced: `PoliteHttp(pause_s=0)("https://coastwatch.pfeg.noaa.gov/erddap/info/index.json", 5)`
+  raises `bad_config`. The tests inject a fake function, so they stay green. Ingest is not affected (it uses `registry.build`
+  without `http`). Actor: anyone who re-runs the back-test online. MEASURED 2026-11-27.
+- **F-21 [Low] Three new guards and two new error codes have no test** (M4, M7, M8 above; `redirect_limit`, `bad_redirect`
+  have no direct test either).
+- **F-22 [Medium, UNVERIFIED] The chlorophyll dataset change is not shown to work.** The report gives no evidence for the new
+  ids or the new host; a new dataset can have a different layout (axes, descending latitude, pixel size), and the fetcher
+  parses by that layout. What would settle it: one `.das` request and one small data request to the new dataset through the
+  fetcher once `coastwatch.noaa.gov` answers, plus a fetcher test fixture taken from that reply. Note also that the area
+  config now has `hosts`, so its `config_sha256` changes (expected, record the new value).
+
+`QA: 3 findings (C/H/M/L = 0/0/2/1) - 3 reproduced (F-20, F-21 mutations; F-22 is UNVERIFIED) - not tested: PostGIS-backed tests (skipped), the live chlorophyll fetch (server 502), the other 4 mutation targets of the redirect loop`
+
+### REVIEW-006 — `feature/fsi-checks` (AI-1, Claude AIE 01), `1679bb3..0b46063`, reviewed 2026-11-27 by the PM
+
+Verdict: **approve for merge.** 3 commits, 7 files: new code under `backend/backtest/`, one report in `backend/docs/`,
+two test files, and the seat's own three boxes in this file. `backend/fsi/`, `inputs.py`, `run.py` and the default weights
+are untouched (config hash unchanged, REPORTED). Nothing raw or from the cache is in the diff.
+
+| Check | Result | Label |
+| --- | --- | --- |
+| Suite on the branch (no database) | 221 passed, 15 skipped (PostGIS tests not run) | MEASURED 2026-11-27 |
+| Mutations on copies of `variants.py` (source hashes unchanged afterwards): overlap guard removed, missing day counted as 0, front factor ignored, window-length guard removed | all **red** | MEASURED 2026-11-27 |
+| Mutation: the "fewer than 3 common cells" skip removed | stays **green**: that guard has no test (Low) | MEASURED 2026-11-27 |
+| Mutation: cache-outside-repository guard replaced by an undefined name | red, but by a `NameError`, so it proves nothing about that guard; the seat's own log lists a mutation for it | MEASURED 2026-11-27 (my mutation was poorly built) |
+| Live numbers (gradient statistics on one MUR field; Spearman 0.190 / 0.305 / 0.420 / 0.468 for front weight 0.20 / 0.10 / 0.05 / 0; 3-day smoothing 0.238 to 0.252; chlorophyll-empty 0.130) | not re-run: they need the seat's request cache, which is outside this repository. The control (0.190, top 20% kept 25%) equals REVIEW-004 | REPORTED |
+
+What the report supports, in my words: the front input is computed correctly (it agrees with an independent haversine
+calculation) but its real size is small (median 0.022 degC/km, max 0.12), and `S_front` is a percentile inside the area, so it
+gives the full weight of 0.20 to a weak gradient (F-23). Lowering the front weight makes the maps calmer; smoothing the
+front over 3 days does not, because the gradient map itself has almost no agreement a week apart. **Calmer is not more
+accurate**: "SST only" is also not calm (0.12). The owner decides the weight (open question 13).
+
+Findings of the seat, kept as written: F-23 [Medium, design] percentile front gives a weak gradient full weight; F-24 [Low]
+a cell's gradient may rest on few pixels (7 of 136 cells under half); F-25 [Low, UNVERIFIED] `fetch_field` reads the private
+`_http`/`_sleep` of a fetcher to keep the allowlisted HTTP, so after `fix/backend-hygiene` is merged one field must be
+fetched again to confirm it still works. PM addition: **F-26 [Low]** the `< 3 common cells` skip in `pair_metrics` has no test.
+
+`QA: 4 findings (C/H/M/L = 0/0/1/3) - 1 reproduced (F-26; F-23 to F-25 are the seat's, REPORTED) - not tested: the live fetches and the seat's offline re-run (cache not in the repository), PostGIS tests, the front-end of any of this`
+
+### REVIEW-007 — `feature/mask-and-pick` (TASK-010, mask seat), `a861e8d..3a357a2`, reviewed 2026-11-27 by the PM (first part)
+
+Verdict so far: **no defect found in the part I could run; do not merge until the PostGIS part is run.** The branch is 2 commits,
+28 files, all under `backend/` (new `masks/`, `pick/`, `compute/`, `legal.py`, `seastate.py`, 7 test files, one mutation log, one
+small land layer). A trial merge into `main` (`git merge-tree`) has no conflicts. Method: `git archive` into a scratch folder,
+suite run, 15 mutations on copies (source hashes unchanged afterwards), the layer hash and both licence statements re-checked
+against the live pages.
+
+| Check | Result | Label |
+| --- | --- | --- |
+| Suite without a database | 306 passed, 43 skipped (the skipped ones are the real-PostGIS tests) | MEASURED 2026-11-27 |
+| Mutations on `legal.py` (land may be eligible; EEZ not required; a forbidden flag no longer blocks; red sea no longer blocks; missing or stale forecast no longer blocks; unknown layers always allowed; flag coercion allowed) | 7 of 7 **red**, each in a test that names the cause | MEASURED 2026-11-27 |
+| Mutations on `pick/select.py` (spacing `>` instead of `>=`; spacing check removed; bbox check removed; non-finite FSI kept; duplicate cell ids kept; limit above 5) | 6 of 6 **red** | MEASURED 2026-11-27 |
+| Mutations on `seastate.py` (red wave threshold `>`; a missing partner value softens danger; stale forecast treated as fresh) | 3 of 3 **red** | MEASURED 2026-11-27 |
+| `land.geojson` sha256 and size | `1b8d828b...ffe99`, 3,621 bytes: equals `PROVENANCE.md` | MEASURED 2026-11-27 |
+| Licence statements: Natural Earth "in the public domain"; Marine Regions "licensed under CC-BY since Maritime Boundaries version 11 (2019)", asks users "not to make our products available for download elsewhere", "no legal value" | the pages say so, so the choice not to commit the EEZ layer and to fetch it at build time is consistent with the provider's request | MEASURED 2026-11-27 |
+| Real PostGIS tests (the "no recommended spot in a forbidden cell" foreign-key tests, idempotent pick, mask run) | **not run**: Docker Desktop was not running (`dockerDesktopLinuxEngine` pipe missing) | NOT TESTED |
+| `masks/geo.py`, `masks/layers.py`, `fetch_eez.py` (point in polygon, EEZ buffer, holes treated as coast, redirect refusal) | read only the `legal.py`, `select.py`, `seastate.py` code; the geometry code has no mutation checks from me | NOT TESTED |
+
+Notes for the owner and the next step (not defects):
+
+- The sea-state rule uses `wx_issued_at`, which is now the retrieval time (REVIEW-005, F-10), so "stale forecast" means "the data
+  we fetched is old", not "the forecast model run is old". That is a fair freshness proxy; say it that way in the demo.
+- A cell with a missing wave or wind value is "yellow, not eligible" (conservative); danger is never softened by a missing
+  partner value (mutation Z2 proves the test exists).
+- The EEZ layer is fetched at build time from Marine Regions, so a fresh machine needs network access and the provider can
+  change the data; the mask run stores the layer hash in `job_runs.detail`.
+
+To finish this review: start Docker Desktop, then run the full suite with `PELAGO_REQUIRE_DB=1` against a throwaway PostGIS
+container, plus 3 to 4 mutations of the database guards (the foreign key to an eligible mask row, the CHECK on
+`cell_mask_daily`) and 2 to 3 mutations of the geometry code.
+
+`QA: 0 findings (C/H/M/L) - 0 reproduced - not tested: the 43 PostGIS tests, the geometry modules, the live EEZ fetch`
+
+### REVIEW-007, second part — `feature/mask-and-pick` on a real PostGIS, 2026-11-27 by the PM
+
+Verdict: **approve for merge** (a clean trial merge into `main` was shown in the first part). The part that was missing is now run.
+
+| Check | Result | Label |
+| --- | --- | --- |
+| Full suite on a throwaway PostGIS 16.x container (`PELAGO_REQUIRE_DB=1`, bound to 127.0.0.1, random password, container and password file removed afterwards) | **349 passed, 0 skipped** | MEASURED 2026-11-27 |
+| `backend/db/tests/schema_test.sql` (guards G, mutations M) on the schema of the branch, which the branch did not change | 42 of 42 pass, including M2 (no mask FK: a non-eligible cell can be recommended) and M4 (no scored-row FK: a cell with no SST can be recommended), which prove those guards can go red | MEASURED 2026-11-27 |
+| Database mutations on copies: eligibility CHECK on `cell_mask_daily` removed; recommendations FK to an eligible mask row removed | both **red**, in tests that name the cause | MEASURED 2026-11-27 |
+| Geometry mutations on copies of `masks/geo.py`: land test inverted; EEZ border buffer inverted; outside the national waters not refused; coast tolerance 2 km to 0; islet holes not treated as coast | 5 of 5 **red** (the 4.8 km versus 5.2 km border test and the islet test fail for the right reason) | MEASURED 2026-11-27 |
+| Not caught by the pytest suite: the FK to a scored FSI row removed (covered by the SQL test M4); the "complete needs every flag" CHECK removed; the "no border at all counts as inside" branch flipped | green | MEASURED 2026-11-27 |
+
+Findings:
+
+- **F-27 [Low] Two database guards and one geometry branch have no pytest test.** The "complete needs every flag" CHECK has two
+  independent guards (this CHECK and `legal.legal_status`), and the scored-row FK is covered by `schema_test.sql`, so no real
+  gap in the guarantee; the "empty border counts as inside the EEZ" branch (`masks/geo.py`, `WHEN ST_IsEmpty(border.geom) THEN TRUE`)
+  is the one to add a test for. Actor: nobody in normal use (an area whose national waters have no border at all).
+- **F-28 [Info] Not tested by me:** the live EEZ fetch from Marine Regions (`masks/fetch_eez.py`) and the redirect refusal there; the
+  real Chonburi cell results (which cells are land or outside the buffer on the actual layers); the order mask, fsi, pick in a
+  scheduled run.
+
+For the demo: the area is still "trial: legal layers incomplete" because protected zones, closed seasons, disputed areas and boat-class
+zones are not loaded; the mask removes land and cells outside the EEZ buffer, and red or unknown sea cells, and nothing else.
+
+`QA: 2 findings (C/H/M/L = 0/0/0/1) + 1 info - 1 reproduced (F-27) - not tested: the live EEZ fetch, the real Chonburi layer results, a scheduled run`
+
+### REVIEW-008 — `feature/fsi-test-gaps` (AI-2, Claude AIE 01), `1815713..b7a9382`, reviewed 2026-11-27 by the PM
+
+Verdict: **approve for merge.** One commit, 3 files, tests and a mutation log only, no behaviour change (the branch was cut before
+the documentation commit, so a plain diff against today's `main` shows the new docs as deleted; against the merge base the diff
+is 3 files, +97 lines, and a trial merge into `main` is clean).
+
+| Check | Result | Label |
+| --- | --- | --- |
+| Suite without a database | 327 passed, 47 skipped | MEASURED 2026-11-27 |
+| Suite on a throwaway PostGIS (`PELAGO_REQUIRE_DB=1`, container and password file removed afterwards) | **374 passed, 0 skipped** | MEASURED 2026-11-27 |
+| F-26 closed: the "fewer than 3 common cells" skip removed | the new test goes **red** (before: green) | MEASURED 2026-11-27 |
+| F-27 closed: the "no border at all counts as inside the EEZ" branch flipped | the new test goes **red** (before: green); the file also holds a control showing a real border does refuse a cell, so the True comes from that branch | MEASURED 2026-11-27 |
+| Source hashes after the mutations | unchanged | MEASURED 2026-11-27 |
+
+`QA: 0 findings (C/H/M/L) - 0 reproduced - not tested: F-25 (the one-field fetch after the hygiene branch is merged), the three open owner decisions that touch FSI`
+
+### REVIEW-009 — `fix/backend-hygiene` (CX-1b), source commit `23d8061`, reviewed 2026-11-27 by the PM
+
+Verdict: **F-20/F-21/F-22 pass PM verification. The existing work branch also contains current `origin/main` after a merge sync; all gates below were rerun on the merged worktree. This does not merge the branch into `main`.**
 
 | Check | Result | Evidence |
 | --- | --- | --- |
 | Origin baseline before review | `d6e860c90ef26f52c2188b050d72aee9e7f1879d` | MEASURED: `git ls-remote origin fix/backend-hygiene` |
-| Import path | worktree backend source | MEASURED: `python -c 'import backtest.inputs; print(backtest.inputs.__file__)'` |
-| Targeted F-20/F-21 tests | **10 passed** | MEASURED: 2026-11-27, PM run, 0.48 s |
-| Non-DB test suite | **212 passed** | MEASURED: 2026-11-27, PM run, 1.37 s; `tests/test_db_roundtrip.py` and `tests/test_fsi_db.py` excluded |
-| Full suite collection | blocked by missing `psycopg` | MEASURED: `python -m pytest -q` stops at collection with `ModuleNotFoundError` in those two DB test modules; no dependency installed |
-| Compile and whitespace | passed | MEASURED: `python -m compileall -q .`; `git diff --check` |
-| Mutations on copies | F-20, M4, M7, M8 all **RED** for their expected failure (`FetchError: bad_config`, assertion mismatch, or `DID NOT RAISE`); original hashes unchanged | MEASURED: PM copy-only mutation script; SHA-256: `backtest/inputs.py` `868e4c7289edc3ab6f4b3d94e676f7a42dd5fada69da8af08fa27f7c8a2654fc`; `ingest/config.py` `2c8fa44ee4c2967c8d47e1332652135e1bf2c56f17c157bc4179c804052b4d4b`; `ingest/fetchers/base.py` `b8946565922079f2bb24cc7273acba7e786038c37e9c2d45c1511cbdbd5a39cd` |
-| NOAA F-22 | both `.das`: HTTP 200; bounded CSV area slice: HTTP 200 and 16 rows for each dataset; expected columns include `time, altitude, latitude, longitude, chlor_a` | MEASURED: 2026-11-27 via `http_get` through the configured host allowlist. First returned chlorophyll cell was `NaN`, so no numeric value is claimed. `config_sha256=669dfcd1b867d6b3b4173ba01c6e3a599afa1ad6e0e25bf016118ebfe5413607` |
+| Import path | branch worktree backend source | MEASURED: `python -c 'import backtest.inputs; print(backtest.inputs.__file__)'` |
+| Targeted F-20/F-21 tests | **10 passed** | MEASURED: PM run after merge sync, 0.58 s |
+| Full test suite without PostGIS | **338 passed, 47 skipped** | MEASURED 2026-11-27. DB modules collected using psycopg 3.3.9 from the worktree `.venv`; tests skipped because Docker engine was unavailable. pytest 8.3.4, numpy 1.26.4 and requests 2.32.5 came from system Python rather than the versions pinned in `backend/requirements.txt`. |
+| Compile and whitespace | passed | MEASURED after merge sync: `python -m compileall -q .`; `git diff --check` |
+| Mutations on copies | F-20, M4, M7, M8 all **RED** for expected cause; original hashes unchanged | MEASURED after merge sync: PM copy-only mutation script; SHA-256: `backtest/inputs.py` `868e4c7289edc3ab6f4b3d94e676f7a42dd5fada69da8af08fa27f7c8a2654fc`; `ingest/config.py` `2c8fa44ee4c2967c8d47e1332652135e1bf2c56f17c157bc4179c804052b4d4b`; `ingest/fetchers/base.py` `b8946565922079f2bb24cc7273acba7e786038c37e9c2d45c1511cbdbd5a39cd` |
+| NOAA F-22 | both `.das`: HTTP 200; bounded CSV area slice: HTTP 200 and 16 rows per dataset; expected columns include `time, altitude, latitude, longitude, chlor_a` | MEASURED 2026-11-27 after merge sync via branch `http_get` and configured host allowlist. First returned chlorophyll cell was `NaN`, so no numeric value is claimed. `config_sha256=669dfcd1b867d6b3b4173ba01c6e3a599afa1ad6e0e25bf016118ebfe5413607` |
 | Scope and untested areas | no PostGIS/database run; no numeric non-NaN chlorophyll value asserted; no frontend/browser test | MEASURED / explicit limitations |
 
 `QA: 0 findings (C/H/M/L = 0/0/0/0) - 4 mutations reproduced - not tested: PostGIS-backed tests, a non-NaN live chlorophyll value, browser/frontend behavior`
