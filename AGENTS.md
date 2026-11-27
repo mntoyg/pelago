@@ -4,6 +4,9 @@ Instructions for every AI agent (and human) working in this repository. Tool-spe
 [`CLAUDE.md`](CLAUDE.md) and [`CODEX.md`](CODEX.md); both assume you have read this file first.
 The current work plan is in [`TASK.md`](TASK.md); the target system and how this prototype maps to it are in
 [`ARCHITECTURE.md`](ARCHITECTURE.md). Read `ARCHITECTURE.md` before designing anything for the backend or AI.
+Product requirements are in [`PRD.md`](PRD.md) and interfaces in [`API.md`](API.md) (the HTTP design is `backend/API_CONTRACT.md`).
+Tool notes: [`CURSOR.md`](CURSOR.md), [`.github/copilot-instructions.md`](.github/copilot-instructions.md). Repeatable verified workflows are
+recorded as skills in `.claude/skills/` (`.codex/skills` is a local junction to it, not committed).
 
 ## 1. What this project is
 

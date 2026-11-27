@@ -9,3 +9,6 @@ node_modules
 !.env.example
 *.pem
 *.key
+
+# Codex skills folder is a Windows junction to .claude/skills; only .claude/skills is committed
+.codex/skills
