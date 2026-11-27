@@ -1,7 +1,12 @@
-# backend/: Pelago Asia API and daily ingest (DESIGN, nothing built yet)
+# backend/: Pelago Asia API and daily ingest
 
-**Status: DRAFT design, written 2026-11-26.** This folder currently holds only documents. No service, no database,
-no deployment exists. It is the proposal for `TASK.md` section 4.1 (one-week slice); the owner has not approved it.
+**Current implementation status (2026-11-27):** daily ingest, FSI, mask/pick, and the FastAPI read API now have
+local implementations on separate work branches. Nothing is deployed. See the dated sections below for each slice's
+branch and verification evidence; the original design history is retained.
+
+**Original design note (2026-11-26):** the material below began as a proposal for `TASK.md` section 4.1. The dated
+implementation notes now supersede any statements in the original proposal that say code is not built. The database
+and API are still not deployed.
 
 | File | What it is |
 | --- | --- |
@@ -332,3 +337,26 @@ cd backend
   not by the real layers; the mask and pick use the `small` class by default (`--boat-class` repeats); the FSI front score still
   uses the ETOPO water proxy and has not been switched to the mask.
 - Guard tests proven able to fail: [`docs/mask-pick-mutation-log.md`](docs/mask-pick-mutation-log.md).
+
+## 12. Local FastAPI read API (CX-2, branch `feature/backend-api`)
+
+Create the virtual environment and install pinned dependencies from this folder:
+
+```powershell
+python -m venv .venv
+.venv/Scripts/python.exe -m pip install -r requirements.txt
+$env:DATABASE_URL = '<read-only PostgreSQL URL from the environment>'
+$env:CORS_ALLOW_ORIGINS = 'http://localhost:8000,http://127.0.0.1:8000'
+.venv/Scripts/uvicorn.exe api.main:app --host 127.0.0.1 --port 8000 --no-access-log
+```
+
+`DATABASE_URL` must belong to a read-only database role. The application also sets each connection transaction to
+read-only. Uvicorn access logging is disabled; do not enable it for this prototype. API docs and OpenAPI routes are
+disabled. Run the unit and PostGIS integration tests with `.venv/Scripts/python.exe -m pytest -q`; integration tests
+require `PELAGO_TEST_ADMIN_URL` for a disposable PostGIS server and `PELAGO_REQUIRE_DB=1` to fail instead of skip.
+
+The API has no authentication, deployment, production proxy-aware rate limiting, or public uptime guarantee. Its
+in-memory rate limit is per process and holds at most 10,000 client buckets; while full, new client keys are rejected
+until expired windows can be reclaimed. Attribution wording is not verified against every provider's terms. Legal
+layers remain incomplete and the area is labelled `trial: legal layers incomplete`; this prototype is not for fishing
+or sea-safety decisions.

@@ -1,20 +1,20 @@
 # API.md — interfaces of Pelago Asia
 
-Status: skeleton written 2026-11-27 by the PM. **No public API is deployed yet.** The HTTP API is designed and not built (Codex item CX-2 in
-`TASK.md` section 4.3). The full design, with field tables and examples, is [`backend/API_CONTRACT.md`](backend/API_CONTRACT.md); this file does
+Status: **The HTTP API is implemented locally on `feature/backend-api`; no public API is deployed yet.** CX-2 verification and push are in progress. The task is in
+[`TASK.md`](TASK.md) section 4.3. The full contract, with field tables and examples, is [`backend/API_CONTRACT.md`](backend/API_CONTRACT.md); this file does
 not repeat it, so the two cannot drift apart.
 
-## 1. HTTP API (designed, not built)
+## 1. HTTP API (implemented locally; not deployed)
 
 All endpoints are `GET`, read-only, JSON, versioned under `/v1`. The contract defines errors, caching headers, CORS and rate limits.
 
 | Endpoint | Purpose | Status |
 | --- | --- | --- |
-| `/v1/health` | liveness and database reachability | designed |
-| `/v1/areas` | list areas | designed |
-| `/v1/areas/{area_id}` | one area: bbox, boat classes, legal status | designed |
-| `/v1/areas/{area_id}/spots` | the 1 to 5 recommended spots for a date and boat class | designed |
-| `/v1/areas/{area_id}/freshness` | per-source and per-job data age | designed |
+| `/v1/health` | liveness and database reachability | implemented locally |
+| `/v1/areas` | list areas | implemented locally |
+| `/v1/areas/{area_id}` | one area: bbox, boat classes, legal status | implemented locally |
+| `/v1/areas/{area_id}/spots` | the 1 to 5 recommended spots for a date and boat class | implemented locally |
+| `/v1/areas/{area_id}/freshness` | per-source and per-job data age | implemented locally |
 | `/v1/areas/{area_id}/cells`, `/v1/areas/{area_id}/outlook` | reserved | not planned this week |
 
 Auth: none for these read-only endpoints in the demo (decision in the contract, section 2.2). Example request and response: `backend/API_CONTRACT.md`

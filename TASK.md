@@ -186,14 +186,21 @@ Rules for every item:
 **CX-2 FastAPI read API** (branch `feature/backend-api`; new folder `backend/api/`; the contract is the spec, section
 12 of `backend/API_CONTRACT.md` lists the tests; asks the owner once for `fastapi`, `uvicorn`, `httpx` from PyPI)
 
-- [ ] `GET /v1/health`, `GET /v1/areas`, `GET /v1/areas/{area_id}`, `GET /v1/areas/{area_id}/freshness` as in the contract
-- [ ] `GET /v1/areas/{area_id}/spots` reads the `recommendations` / `fsi_daily` / mask rows only (never writes); with no picks it answers `200` with empty `spots` and the contract's `status` (`no_run`, `no_data`, `withheld_legal_incomplete`, ...), it never invents spots and the front end must not read an empty `200` as a reason to show anything else; legal status is passed through and the area stays labelled "trial: legal layers incomplete"
-- [ ] The single confidence rule of contract 4.6 lives in one place and the API output uses it
-- [ ] Connects with the read-only database role from `DATABASE_URL` (environment only); no secret in code, logs or error bodies; no stack trace in any error response; errors follow contract section 5
-- [ ] Input hardening: unknown `area_id`, bad date, future date, bad `boat_class`, oversized or repeated query parameters, odd Unicode in path and query: each returns the documented 4xx and never a 500
-- [ ] CORS allowlist and a basic rate limit (contract 2.2); the responses carry the `ETag` / `Cache-Control` / `X-Request-Id` headers of 2.1 (including `304` on `If-None-Match`)
-- [ ] Contract tests of section 12 pass on a real PostGIS with seeded rows; each rule in 4.4 has a mutation check that goes red
-- [ ] `backend/README.md` says how to run the API locally and what is not built
+- [x] `GET /v1/health`, `GET /v1/areas`, `GET /v1/areas/{area_id}`, `GET /v1/areas/{area_id}/freshness` as in the contract
+- [x] `GET /v1/areas/{area_id}/spots` reads `recommendations` / `fsi_daily` / mask rows read-only; empty results return `200` with contract statuses; it never invents spots; legal status is passed through and the area stays labelled "trial: legal layers incomplete"
+- [x] Contract 4.6 confidence is computed in FSI; the API passes through `fsi_daily.confidence` (not the recommendation copy)
+- [x] Reads `DATABASE_URL` from the environment and uses read-only transactions; errors are sanitized with no stack traces
+- [x] Input hardening returns documented 4xx for unknown areas, invalid/future dates, invalid boat classes, oversized/repeated/unknown parameters, and Unicode path/query values
+- [x] Explicit CORS allowlist, bounded per-process rate limiter, `ETag` / `Cache-Control` / `X-Request-Id`, and conditional `304`
+- [x] Contract tests pass with seeded PostGIS rows; API safety and freshness guards have mutation checks in [`backend/docs/api-mutation-log.md`](backend/docs/api-mutation-log.md)
+- [x] `backend/README.md` documents local API startup and current limitations
+
+CX-2 verification (MEASURED 2026-11-27, worktree before commit): full backend suite `416 passed` with
+`PELAGO_REQUIRE_DB=1` on disposable PostGIS 16.16; no database tests skipped. The API integration test seeded grid,
+FSI, mask, job and recommendation rows; verified no-run/no-data/real-spot responses and transaction-level write
+rejection. `python -m compileall` and `git diff --check` passed. Twelve mutation tests failed as expected and restored
+the source hash. Deployment with the owner's actual read-only role, provider attribution wording, browser wiring, and
+public deployment remain untested/out of this item.
 
 **CX-3 Daily job runner** (branch `feature/daily-job`; new `backend/jobs/`; the scheduler account, secrets and any
 workflow file are owner actions, so no workflow file and no secret are committed)

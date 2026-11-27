@@ -8,7 +8,7 @@ The URL is never printed.
 import os
 import re
 import secrets
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 
 import psycopg
@@ -148,3 +148,109 @@ def test_the_database_itself_rejects_what_the_ingest_must_never_send(db, make_ar
     assert one(db, "SELECT error_code FROM pelago.job_runs WHERE run_id=%s", run_id) == "error"
     with pytest.raises(psycopg.errors.CheckViolation):          # and the database refuses a URL as an error_code anyway
         db.execute("UPDATE pelago.job_runs SET error_code = 'http://x'")
+
+
+def test_api_reads_real_postgis_without_write_privileges(db, make_area):
+    """Exercise the API adapter and routes against an isolated PostGIS database."""
+    import asyncio
+
+    import httpx
+
+    from api.main import create_app
+    from api.repository import PostgresRepository
+
+    area = make_area()
+    Writer(db).ensure_region(area)
+    conninfo = psycopg.conninfo.make_conninfo(ADMIN, dbname=db.info.dbname)
+    repository = PostgresRepository(conninfo)
+
+    assert repository.health() is True
+    with pytest.raises(psycopg.errors.ReadOnlySqlTransaction):
+        repository._query("CREATE TABLE api_write_probe (id integer)")
+    assert one(db, "SELECT to_regclass('public.api_write_probe') IS NULL") is True
+
+    app = create_app(repository, cors_origins=("http://localhost:8000",))
+
+    async def get(path):
+        transport = httpx.ASGITransport(app=app, raise_app_exceptions=False)
+        async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as client:
+            return await client.get(path)
+
+    async def exercise():
+        assert (await get("/v1/health")).status_code == 200
+        listing = await get("/v1/areas")
+        assert listing.status_code == 200
+        assert listing.json()["areas"][0]["verification_level"] == "trial"
+        detail = await get(f"/v1/areas/{area.area_id}")
+        assert detail.status_code == 200
+        assert detail.json()["verification"]["level"] == "trial"
+        freshness = await get(f"/v1/areas/{area.area_id}/freshness")
+        assert freshness.status_code == 200
+        assert {source["variable"] for source in freshness.json()["sources"]} == {"sst", "chl", "depth", "wave_wind"}
+        spots = await get(f"/v1/areas/{area.area_id}/spots?date={RUN.isoformat()}")
+        assert spots.status_code == 200
+        assert spots.json()["status"] == "no_run"
+        assert spots.json()["spots"] == []
+
+        no_data_run_date = RUN - timedelta(days=1)
+        db.execute(
+            """INSERT INTO pelago.job_runs (job_kind, region_id, run_date, status, started_at, finished_at)
+               VALUES ('pick', %s, %s, 'success', now() - interval '2 minutes', now() - interval '1 minute')""",
+            (area.area_id, no_data_run_date),
+        )
+        no_data_response = await get(f"/v1/areas/{area.area_id}/spots?date={no_data_run_date.isoformat()}")
+        assert no_data_response.status_code == 200
+        assert no_data_response.json()["status"] == "no_data"
+        assert no_data_response.json()["spots"] == []
+
+        from tests.test_fsi_db import run as run_fsi, seed as seed_fsi
+
+        cells = seed_fsi(db, area, chl_everywhere=True)
+        assert run_fsi(db, area).status == "success"
+        target = cells[10]
+        db.execute(
+            """UPDATE pelago.grid_daily SET wave_window_max_m = 0.4, wind_window_max_kmh = 15,
+                      wx_issued_at = %s, wx_source = 'open_meteo_marine'
+               WHERE region_id = %s AND run_date = %s AND cell_id = %s""",
+            (datetime(2026, 11, 26, 7, tzinfo=UTC), area.area_id, RUN, target),
+        )
+        db.execute(
+            """INSERT INTO pelago.cell_mask_daily (region_id, run_date, boat_class, cell_id, is_water,
+                      eez_ok, legal_status, forecast_ok, sea_state_level, sea_reason_code,
+                      legal_unknown_allowed, eligible)
+               VALUES (%s, %s, 'small', %s, true, true, 'incomplete', true, 'green', 'calm', true, true)""",
+            (area.area_id, RUN, target),
+        )
+        pick_run = db.execute(
+            """INSERT INTO pelago.job_runs (job_kind, region_id, run_date, status, started_at, finished_at, detail)
+               VALUES ('pick', %s, %s, 'success', now() - interval '1 minute', now(), %s::jsonb) RETURNING run_id""",
+            (area.area_id, RUN, '{"model_version":"fsi-v1.0.0"}'),
+        ).fetchone()[0]
+        expected_fsi_confidence = db.execute(
+            "SELECT confidence FROM pelago.fsi_daily WHERE region_id = %s AND run_date = %s AND cell_id = %s",
+            (area.area_id, RUN, target),
+        ).fetchone()[0]
+        assert expected_fsi_confidence == "medium"
+        db.execute(
+            """INSERT INTO pelago.recommendations (region_id, run_date, boat_class, model_version, pick_rank,
+                      cell_id, fsi, confidence, legal_status, run_id)
+               SELECT region_id, run_date, 'small', model_version, 1, cell_id, fsi, 'low', 'incomplete', %s
+               FROM pelago.fsi_daily WHERE region_id = %s AND run_date = %s AND cell_id = %s""",
+            (pick_run, area.area_id, RUN, target),
+        )
+        freshness_after_run = await get(f"/v1/areas/{area.area_id}/freshness")
+        assert freshness_after_run.status_code == 200
+        assert freshness_after_run.json()["compute"]["pick"]["run_date"] == RUN.isoformat()
+        spot_response = await get(f"/v1/areas/{area.area_id}/spots?date={RUN.isoformat()}")
+        assert spot_response.status_code == 200
+        body = spot_response.json()
+        assert body["status"] == "ok"
+        assert len(body["spots"]) == 1
+        assert body["spots"][0]["cell_id"] == target
+        assert body["spots"][0]["confidence"] == expected_fsi_confidence
+        assert body["spots"][0]["confidence_cap"] == "no_verified_catch_logs"
+        assert body["spots"][0]["observations"]["sst"]["value"] is not None
+        assert body["spots"][0]["observations"]["sst"]["age_days"] == 1
+        assert len(str(body["spots"][0]["position"]["lat"]).partition(".")[2]) <= 4
+
+    asyncio.run(exercise())
