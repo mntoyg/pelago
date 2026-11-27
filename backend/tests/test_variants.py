@@ -128,3 +128,17 @@ def test_daily_sst_is_cached_outside_the_repository_and_read_back(tmp_path, monk
     with pytest.raises(ValueError, match="outside the repository"):
         variants.fetch_sst_day(small_area, date(2026, 6, 1), inputs.REPO_ROOT / "backend" / "cache", None)
     assert json.loads(next((tmp_path / small_area.area_id).glob("*.json")).read_text(encoding="utf-8"))["observed_at"].startswith("2026-06-01")
+
+
+def test_a_pair_with_fewer_than_three_common_cells_is_skipped_not_reported():
+    """F-26: two cells in common is too few for a rank correlation; the pair must give NO row (not a row with Spearman None
+    and a mean change computed from two cells). Three common cells is the smallest pair that is reported."""
+    d1, d2 = date(2026, 6, 1), date(2026, 6, 8)
+    at = lambda d: datetime(d.year, d.month, d.day, 5, tzinfo=UTC)
+    mk = lambda d, ids: score_area([cell(i, 0.002 * i, sst=27 + i * 0.3, t=at(d)) for i in ids], d, P, "trial")
+    two = {d1: mk(d1, [1, 2, 3, 4]), d2: mk(d2, [3, 4, 8, 9])}          # common cells: 3 and 4
+    assert variants.pair_metrics(two, [(d1, d2)]) == []
+    three = {d1: mk(d1, [1, 2, 3, 4]), d2: mk(d2, [2, 3, 4, 9])}        # common cells: 2, 3, 4
+    rows = variants.pair_metrics(three, [(d1, d2)])
+    assert len(rows) == 1 and rows[0]["cells"] == 3
+    assert variants.pair_metrics({d1: mk(d1, [1, 2]), d2: mk(d2, [1, 2])}, [(d1, d2)]) == []   # fewer cells than the minimum on both days
