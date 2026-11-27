@@ -332,3 +332,24 @@ cd backend
   not by the real layers; the mask and pick use the `small` class by default (`--boat-class` repeats); the FSI front score still
   uses the ETOPO water proxy and has not been switched to the mask.
 - Guard tests proven able to fail: [`docs/mask-pick-mutation-log.md`](docs/mask-pick-mutation-log.md).
+
+## 12. Daily runner (CX-3, branch `feature/daily-job`)
+
+From the repository root, provide `DATABASE_URL_INGEST` through the process environment and run:
+
+```text
+python -m backend.jobs.run_daily --area th-chonburi-coast --date 2026-11-27
+```
+
+Omit `--date` to use the area's current local date. The runner records ingest results first, then invokes the merged
+mask → FSI → pick compute pipeline. If that pipeline is unavailable, it runs FSI and records mask/pick as
+`skipped` with reason `not_built`. A failed stage exits non-zero and later stages do not run. A fully completed
+area/date with the same area configuration is skipped on rerun. The command does not print the database URL or raw
+exception text.
+
+Configure a host cron or scheduler to run the command at the desired cadence, with `DATABASE_URL_INGEST` stored in
+that host's secret environment. No host, account, schedule, workflow, or credential is configured by this repository;
+those deployment choices remain open.
+
+PostGIS-backed orchestration tests and the verified failure mutations are recorded in
+[`docs/daily-job-mutation-log.md`](docs/daily-job-mutation-log.md).

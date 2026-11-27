@@ -198,10 +198,14 @@ Rules for every item:
 **CX-3 Daily job runner** (branch `feature/daily-job`; new `backend/jobs/`; the scheduler account, secrets and any
 workflow file are owner actions, so no workflow file and no secret are committed)
 
-- [ ] `python -m backend.jobs.run_daily --area th-chonburi-coast [--date YYYY-MM-DD]` runs fetch (ingest) then FSI, writes a `job_runs` row per step, is idempotent (a second run changes nothing), and exits non-zero if any step failed
-- [ ] The mask and pick steps are a named hook. While `feature/mask-and-pick` is **not** on `main` the hook is reported `skipped: not built` in `job_runs`. Once the PM has merged that branch (check `git log origin/main` for `backend/compute/`), the hook calls `backend/compute/pipeline.py` instead of skipping, and a test shows both paths. Do not copy or re-implement code from that branch before it is on `main`
-- [ ] A failed step stops the later steps, leaves no half-written `recommendations` row, and the next run recovers; tested with an injected failure and a mutation check
-- [ ] `backend/README.md` explains how to run it from a host's cron or scheduler (no host chosen yet, open question 2)
+Status: done (Codex, 2026-11-27). `origin/main` contains `backend/compute/pipeline.py` (merged in `8434caf`), and
+the runner calls the mask → FSI → pick pipeline after ingest. The pre-merge fallback is also exercised explicitly.
+
+- [x] `python -m backend.jobs.run_daily --area th-chonburi-coast [--date YYYY-MM-DD]` runs ingest then compute, writes `job_runs` rows per step, is idempotent (a second run changes nothing), and exits non-zero if any step failed; verified with required PostGIS tests enabled.
+- [x] Mask and pick use a named hook. The merged compute pipeline path and explicit `skipped: not_built` fallback are both tested.
+- [x] A failed ingest stops compute and creates no recommendation row; an injected failure recovers on retry. Mutation checks for the failure gate and idempotence gate fail on their named regression; see `backend/docs/daily-job-mutation-log.md`.
+- [x] `backend/README.md` explains host cron/scheduler setup. No host account, schedule or workflow was configured; deployment choice remains open.
+- Verification (2026-11-27): `383 passed in 70.87s` on PostGIS 16-3.7 with `PELAGO_REQUIRE_DB=1`; no tests skipped. Targeted job tests: `9 passed in 2.94s`. Disposable local PostGIS was removed after verification.
 
 **CX-4 AI: FSI checks and stability measurements — MOVED from Codex to Claude AIE 01 on 2026-11-27 (see 4.5; Codex skips this item)** (branch `feature/fsi-checks`; files: `backend/fsi/`,
 `backend/backtest/`, one new report under `backend/docs/`; numbers only, no accuracy claim)
