@@ -44,7 +44,8 @@ def main(argv: list[str] | None = None) -> int:
         print(f"error: {exc}", file=sys.stderr)
         return 2
     dates = inputs.weekly_dates(end, a.count, a.step_days) + [d for d in extra if d not in set(inputs.weekly_dates(end, a.count, a.step_days))]
-    http = None if a.offline else inputs.PoliteHttp(max_requests=a.max_requests, pause_s=a.pause_s)
+    http = None if a.offline else inputs.PoliteHttp(max_requests=a.max_requests, pause_s=a.pause_s,
+                                                    allowed_hosts=area.all_allowed_hosts)
     history, stats = inputs.load_history(area, dates, cache, http)
     if not history:
         print("no dates available", file=sys.stderr)

@@ -53,3 +53,11 @@ def test_traversal_to_an_existing_config_outside_the_directory_is_refused(tmp_pa
     (tmp_path / "outside.json").write_text(json.dumps(raw), encoding="utf-8")          # a VALID config one level up
     with pytest.raises(ConfigError):
         load_area("../outside", tmp_path / "areas")
+
+
+@pytest.mark.parametrize("hosts", [[], ["coastwatch.pfeg.noaa.gov", "coastwatch.pfeg.noaa.gov"],
+                                    ["COASTWATCH.PFEG.NOAA.GOV"], ["not_a_hostname"]])
+def test_invalid_source_hosts_are_refused(tmp_path, raw, hosts):
+    raw["sources"]["sst"][0]["hosts"] = hosts
+    with pytest.raises(ConfigError, match="source hosts"):
+        write(tmp_path, raw)

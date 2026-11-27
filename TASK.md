@@ -182,6 +182,12 @@ Rules for every item:
 - [x] The two lines that say the owner "may remove" the NOAA-20 fallback now say it is kept (D11) (9a7768f, 2026-11-26)
 - [x] `wx_issued_at` is reworded in the contract and README as the retrieval time, not a forecast issue time (F-10) (9a7768f, 2026-11-26)
 
+**CX-1b Backend hygiene follow-up** (Codex, same branch `fix/backend-hygiene`, assigned 2026-11-27)
+
+- [x] F-20: `PoliteHttp` uses the area config's HTTP allowlist; its back-test request test goes red when the wiring is removed (PM-checked in the uncommitted worktree diff based on `d6e860c`, 2026-11-27; see REVIEW-009)
+- [x] F-21: cover empty allowlist, invalid config hosts, userinfo/non-443 port, missing redirect location, and three-hop redirect limit; M4/M7/M8 mutation checks go red (PM-checked in the uncommitted worktree diff based on `d6e860c`, 2026-11-27; see REVIEW-009)
+- [x] F-22: both NOAA chlorophyll datasets and `coastwatch.noaa.gov` verified live 2026-11-27: both `.das` requests returned HTTP 200; bounded area CSV requests through `http_get` returned HTTP 200 and parsed 16 rows each. Sample: `time,altitude,latitude,longitude,chlor_a` and `2026-11-15T12:00:00Z,0.0,13.10625,100.89375,NaN` (the sample cell was missing data; this verifies endpoint/layout, not a numeric chlorophyll value). Config SHA-256: `669dfcd1b867d6b3b4173ba01c6e3a599afa1ad6e0e25bf016118ebfe5413607` (PM-measured; see REVIEW-009)
+
 **CX-2 FastAPI read API** (branch `feature/backend-api`; new folder `backend/api/`; the contract is the spec, section
 12 of `backend/API_CONTRACT.md` lists the tests; asks the owner once for `fastapi`, `uvicorn`, `httpx` from PyPI)
 
@@ -472,3 +478,21 @@ Findings:
 Not tested: Supabase, a scheduler, the API, the land and EEZ masks (cells that ETOPO treats as water but are land are still scored), periods longer than 12 months, the 11 missing dates, daily results, `hit_rate` on real data, the seat's back-test cache and live run.
 
 `QA: 4 findings (C/H/M/L = 0/0/1/3) + 3 info - 216 tests and 10 mutations reproduced by the PM, config hash re-measured - not tested: Supabase, scheduler, API, masks, the seat's live back-test run`
+
+### REVIEW-009 — `fix/backend-hygiene` (CX-1b), uncommitted diff based on `d6e860c`, reviewed 2026-11-27 by the PM
+
+Verdict: **F-20/F-21/F-22 pass PM verification in the worktree; CX-1b may be committed and pushed as a work branch.** This does not merge the branch to `main`.
+
+| Check | Result | Evidence |
+| --- | --- | --- |
+| Origin baseline before review | `d6e860c90ef26f52c2188b050d72aee9e7f1879d` | MEASURED: `git ls-remote origin fix/backend-hygiene` |
+| Import path | worktree backend source | MEASURED: `python -c 'import backtest.inputs; print(backtest.inputs.__file__)'` |
+| Targeted F-20/F-21 tests | **10 passed** | MEASURED: 2026-11-27, PM run, 0.48 s |
+| Non-DB test suite | **212 passed** | MEASURED: 2026-11-27, PM run, 1.37 s; `tests/test_db_roundtrip.py` and `tests/test_fsi_db.py` excluded |
+| Full suite collection | blocked by missing `psycopg` | MEASURED: `python -m pytest -q` stops at collection with `ModuleNotFoundError` in those two DB test modules; no dependency installed |
+| Compile and whitespace | passed | MEASURED: `python -m compileall -q .`; `git diff --check` |
+| Mutations on copies | F-20, M4, M7, M8 all **RED** for their expected failure (`FetchError: bad_config`, assertion mismatch, or `DID NOT RAISE`); original hashes unchanged | MEASURED: PM copy-only mutation script; SHA-256: `backtest/inputs.py` `868e4c7289edc3ab6f4b3d94e676f7a42dd5fada69da8af08fa27f7c8a2654fc`; `ingest/config.py` `2c8fa44ee4c2967c8d47e1332652135e1bf2c56f17c157bc4179c804052b4d4b`; `ingest/fetchers/base.py` `b8946565922079f2bb24cc7273acba7e786038c37e9c2d45c1511cbdbd5a39cd` |
+| NOAA F-22 | both `.das`: HTTP 200; bounded CSV area slice: HTTP 200 and 16 rows for each dataset; expected columns include `time, altitude, latitude, longitude, chlor_a` | MEASURED: 2026-11-27 via `http_get` through the configured host allowlist. First returned chlorophyll cell was `NaN`, so no numeric value is claimed. `config_sha256=669dfcd1b867d6b3b4173ba01c6e3a599afa1ad6e0e25bf016118ebfe5413607` |
+| Scope and untested areas | no PostGIS/database run; no numeric non-NaN chlorophyll value asserted; no frontend/browser test | MEASURED / explicit limitations |
+
+`QA: 0 findings (C/H/M/L = 0/0/0/0) - 4 mutations reproduced - not tested: PostGIS-backed tests, a non-NaN live chlorophyll value, browser/frontend behavior`

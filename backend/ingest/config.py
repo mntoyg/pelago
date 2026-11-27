@@ -70,6 +70,11 @@ class AreaConfig:
                     return tuple(source["hosts"])
         return ()
 
+    @property
+    def all_allowed_hosts(self) -> tuple[str, ...]:
+        return tuple(dict.fromkeys(host for chain in self.raw["sources"].values()
+                                   for source in chain for host in source["hosts"]))
+
     def cell_ids(self) -> list[int]:
         lon0, lat0, lon1, lat1 = self.bbox
         return cells_in_bbox(lon0, lat0, lon1, lat1)

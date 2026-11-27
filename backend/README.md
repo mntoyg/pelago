@@ -298,5 +298,6 @@ cd backend
 - `backtest/` computes coverage, direction-of-response, spread, weight-sensitivity and stability checks. **It is not evidence of
   accuracy** (no catch logs, no Global Fishing Watch token). `backtest.checks.hit_rate` follows the A9 definition and was run on
   SYNTHETIC data only. The cache of upstream values must be outside the repository (the code refuses a folder inside it).
+- Back-test HTTP uses the area's combined source-host allowlist; requests retain the fetcher's HTTPS, redirect and size limits.
 - Guard tests proven able to fail: [`docs/fsi-mutation-log.md`](docs/fsi-mutation-log.md), [`docs/backtest-mutation-log.md`](docs/backtest-mutation-log.md).
   Result of the one live run: [`docs/fsi-backtest-report.md`](docs/fsi-backtest-report.md).

@@ -262,6 +262,67 @@ def test_http_redirect_to_unlisted_host_is_refused_before_following(monkeypatch)
     assert calls[0][1]["allow_redirects"] is False
 
 
+def test_http_empty_allowlist_is_refused_before_request(monkeypatch):
+    calls = []
+    monkeypatch.setattr(requests, "get", lambda *a, **k: calls.append(a) or None)
+    with pytest.raises(FetchError) as e:
+        http_get("https://example.test/x", 1, allowed_hosts=())
+    assert e.value.code == "bad_config"
+    assert calls == []
+
+
+@pytest.mark.parametrize("url", ["https://user:dummy@allowed.test/x", "https://allowed.test:8443/x"])
+def test_http_userinfo_and_nonstandard_port_are_refused(monkeypatch, url):
+    calls = []
+
+    class Response:
+        status_code = 200
+        def __enter__(self): return self
+        def __exit__(self, *a): return False
+        def iter_content(self, chunk_size): return iter((b"unexpected",))
+
+    monkeypatch.setattr(requests, "get", lambda *a, **k: calls.append(a) or Response())
+    with pytest.raises(FetchError) as e:
+        http_get(url, 1, allowed_hosts=("allowed.test",))
+    assert e.value.code == "bad_url"
+    assert calls == []
+
+
+def test_http_redirect_without_location_is_refused(monkeypatch):
+    class Response:
+        status_code = 302
+        headers = {}
+        def __enter__(self): return self
+        def __exit__(self, *a): return False
+
+    calls = []
+    monkeypatch.setattr(requests, "get", lambda url, **kwargs: calls.append(url) or Response())
+    with pytest.raises(FetchError) as e:
+        http_get("https://example.test/start", 1, allowed_hosts=("example.test",))
+    assert e.value.code == "bad_redirect"
+    assert calls == ["https://example.test/start"]
+
+
+def test_http_redirect_limit_allows_two_hops_only(monkeypatch):
+    calls = []
+
+    class Response:
+        status_code = 302
+        def __init__(self, location): self.headers = {"Location": location}
+        def __enter__(self): return self
+        def __exit__(self, *a): return False
+
+    def fake_get(url, **kwargs):
+        calls.append(url)
+        return Response(f"/hop-{len(calls)}")
+
+    monkeypatch.setattr(requests, "get", fake_get)
+    with pytest.raises(FetchError) as e:
+        http_get("https://example.test/start", 1, allowed_hosts=("example.test",))
+    assert e.value.code == "redirect_limit"
+    assert calls == ["https://example.test/start", "https://example.test/hop-1", "https://example.test/hop-2"]
+
+
 def test_oversized_response_is_cut_off(monkeypatch):
     class Resp:
         status_code = 200

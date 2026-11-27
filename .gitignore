@@ -1,4 +1,7 @@
 .vercel
+.ai/
+.worktrees/
+.codex/skills
 .DS_Store
 Thumbs.db
 node_modules

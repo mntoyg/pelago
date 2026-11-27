@@ -3,6 +3,7 @@ import json
 from datetime import date, datetime, timedelta, timezone
 
 import pytest
+import requests
 
 from backtest import checks, inputs
 from backtest.inputs import PoliteHttp, RequestCap
@@ -12,6 +13,28 @@ from tests.fsi_helpers import params
 
 P = params()
 UTC = timezone.utc
+
+
+def test_backtest_client_uses_area_http_allowlist(monkeypatch, small_area):
+    calls = []
+
+    class Response:
+        status_code = 200
+        def __enter__(self): return self
+        def __exit__(self, *a): return False
+        def iter_content(self, chunk_size): return iter((b"allowed response",))
+
+    def fake_get(url, **kwargs):
+        calls.append((url, kwargs))
+        return Response()
+
+    monkeypatch.setattr(requests, "get", fake_get)
+    client = PoliteHttp(max_requests=1, pause_s=0, allowed_hosts=small_area.all_allowed_hosts)
+    url = "https://coastwatch.pfeg.noaa.gov/erddap/info/index.json"
+    assert client(url, 1) == b"allowed response"
+    assert [request[0] for request in calls] == [url]
+    assert calls[0][1]["allow_redirects"] is False
+    assert client.count == 1
 
 
 def synthetic_history(n_dates=4, n_cells=30, chl_every=2):

@@ -9,6 +9,7 @@ from __future__ import annotations
 import json
 import time as _time
 from datetime import date, datetime, timedelta
+from functools import partial
 from pathlib import Path
 from typing import Callable
 
@@ -28,11 +29,13 @@ class RequestCap(Exception):
 
 class PoliteHttp:
     """Counts requests, refuses past the cap, and keeps at least pause_s seconds between two requests."""
-    def __init__(self, inner: HttpGet = http_get, max_requests: int = 250, pause_s: float = 2.0,
-                 clock: Callable[[], float] = _time.monotonic, sleep: Callable[[float], None] = _time.sleep):
+    def __init__(self, inner: HttpGet | None = None, max_requests: int = 250, pause_s: float = 2.0,
+                 clock: Callable[[], float] = _time.monotonic, sleep: Callable[[float], None] = _time.sleep,
+                 allowed_hosts: tuple[str, ...] = ()):
         if max_requests < 0 or pause_s < 0:
             raise ValueError("max_requests and pause_s must not be negative")
-        self.inner, self.cap, self.pause, self.clock, self.sleep = inner, max_requests, pause_s, clock, sleep
+        self.inner = inner if inner is not None else partial(http_get, allowed_hosts=allowed_hosts)
+        self.cap, self.pause, self.clock, self.sleep = max_requests, pause_s, clock, sleep
         self.count, self._last = 0, None
 
     def __call__(self, url: str, timeout: float) -> bytes:
