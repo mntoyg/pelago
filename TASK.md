@@ -260,9 +260,9 @@ edit `backend/backtest/inputs.py` or `backend/backtest/run.py`: Codex fixes the 
 rebase on `main` after that merge before you re-run the live parts. Numbers only, no accuracy claim, default weights
 unchanged.
 
-- [x] F-16: check the SST temperature-front input on one real SST field for the area (one small ERDDAP request on `jplMURSST41`, within the request limits of the back-test brief): gradient statistics, grid-edge and land-adjacent behaviour; say plainly if the front looks wrong (`b2a07c5`, report `f462aba`)
-- [x] Open question 13: with the existing harness measure week-to-week agreement for (a) today's weights, (b) a lower front weight, (c) the front smoothed over several days, same metrics as REVIEW-004 (Spearman, top-20% overlap vs random); the owner decides, the config default is not changed (`b2a07c5`, report `f462aba`)
-- [x] The report states what each result does and does not show; chlorophyll-empty behaviour (open question 12) is shown unchanged (`f462aba`)
+- [x] F-16: check the SST temperature-front input on one real SST field for the area (one small ERDDAP request on `jplMURSST41`, within the request limits of the back-test brief): gradient statistics, grid-edge and land-adjacent behaviour; say plainly if the front looks wrong (`b2a07c5`, report `f462aba`) PM-checked 2026-11-27 (code, tests and mutations reproduced; the live numbers are REPORTED, see REVIEW-006)
+- [x] Open question 13: with the existing harness measure week-to-week agreement for (a) today's weights, (b) a lower front weight, (c) the front smoothed over several days, same metrics as REVIEW-004 (Spearman, top-20% overlap vs random); the owner decides, the config default is not changed (`b2a07c5`, report `f462aba`) PM-checked 2026-11-27 (code, tests and mutations reproduced; the live numbers are REPORTED, see REVIEW-006)
+- [x] The report states what each result does and does not show; chlorophyll-empty behaviour (open question 12) is shown unchanged (`f462aba`) PM-checked 2026-11-27 (code, tests and mutations reproduced; the live numbers are REPORTED, see REVIEW-006)
 
 **FE-1 (Claude SWE 01 = Pelago SWE 01; branch `feature/frontend-api-adapter`; independent of Codex's API)**
 
@@ -368,6 +368,7 @@ Front end and quality:
     the top 20% of cells overlaps 25% against 20% for a random map) and that the temperature front causes most of it. Whether spots may
     move that much is a product decision. Options: accept it and say so in the demo (PM default), lower the front weight, or smooth
     the front over several days. The front itself is still unverified on real data (F-16).
+    **Result (REVIEW-006, 2026-11-27):** week-to-week Spearman 0.190 now; 0.305 with the front weight 0.10; 0.420 with 0.05; 0.468 with no front. Smoothing the front over 3 days changes almost nothing. Calmer does not mean more accurate. **Owner decision needed:** keep 0.20 and say so in the demo (PM default), or lower the front weight to 0.10.
 14. **More back-test requests?** The 250-request cap left 11 of 52 dates unfetched and no daily sample. Another budget is optional;
     it adds load on the public NOAA server and meter use. Default: no.
 
@@ -543,3 +544,30 @@ Findings:
   config now has `hosts`, so its `config_sha256` changes (expected, record the new value).
 
 `QA: 3 findings (C/H/M/L = 0/0/2/1) - 3 reproduced (F-20, F-21 mutations; F-22 is UNVERIFIED) - not tested: PostGIS-backed tests (skipped), the live chlorophyll fetch (server 502), the other 4 mutation targets of the redirect loop`
+
+### REVIEW-006 — `feature/fsi-checks` (AI-1, Claude AIE 01), `1679bb3..0b46063`, reviewed 2026-11-27 by the PM
+
+Verdict: **approve for merge.** 3 commits, 7 files: new code under `backend/backtest/`, one report in `backend/docs/`,
+two test files, and the seat's own three boxes in this file. `backend/fsi/`, `inputs.py`, `run.py` and the default weights
+are untouched (config hash unchanged, REPORTED). Nothing raw or from the cache is in the diff.
+
+| Check | Result | Label |
+| --- | --- | --- |
+| Suite on the branch (no database) | 221 passed, 15 skipped (PostGIS tests not run) | MEASURED 2026-11-27 |
+| Mutations on copies of `variants.py` (source hashes unchanged afterwards): overlap guard removed, missing day counted as 0, front factor ignored, window-length guard removed | all **red** | MEASURED 2026-11-27 |
+| Mutation: the "fewer than 3 common cells" skip removed | stays **green**: that guard has no test (Low) | MEASURED 2026-11-27 |
+| Mutation: cache-outside-repository guard replaced by an undefined name | red, but by a `NameError`, so it proves nothing about that guard; the seat's own log lists a mutation for it | MEASURED 2026-11-27 (my mutation was poorly built) |
+| Live numbers (gradient statistics on one MUR field; Spearman 0.190 / 0.305 / 0.420 / 0.468 for front weight 0.20 / 0.10 / 0.05 / 0; 3-day smoothing 0.238 to 0.252; chlorophyll-empty 0.130) | not re-run: they need the seat's request cache, which is outside this repository. The control (0.190, top 20% kept 25%) equals REVIEW-004 | REPORTED |
+
+What the report supports, in my words: the front input is computed correctly (it agrees with an independent haversine
+calculation) but its real size is small (median 0.022 degC/km, max 0.12), and `S_front` is a percentile inside the area, so it
+gives the full weight of 0.20 to a weak gradient (F-23). Lowering the front weight makes the maps calmer; smoothing the
+front over 3 days does not, because the gradient map itself has almost no agreement a week apart. **Calmer is not more
+accurate**: "SST only" is also not calm (0.12). The owner decides the weight (open question 13).
+
+Findings of the seat, kept as written: F-23 [Medium, design] percentile front gives a weak gradient full weight; F-24 [Low]
+a cell's gradient may rest on few pixels (7 of 136 cells under half); F-25 [Low, UNVERIFIED] `fetch_field` reads the private
+`_http`/`_sleep` of a fetcher to keep the allowlisted HTTP, so after `fix/backend-hygiene` is merged one field must be
+fetched again to confirm it still works. PM addition: **F-26 [Low]** the `< 3 common cells` skip in `pair_metrics` has no test.
+
+`QA: 4 findings (C/H/M/L = 0/0/1/3) - 1 reproduced (F-26; F-23 to F-25 are the seat's, REPORTED) - not tested: the live fetches and the seat's offline re-run (cache not in the repository), PostGIS tests, the front-end of any of this`
