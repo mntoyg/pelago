@@ -240,6 +240,13 @@ mutation checks on copies, check the provenance and licence note against the liv
 word; then the front-end adapter (Pelago SWE 01, decision D9) once CX-2 is merged; then a reviewer seat for the red-team
 pass; then the demo script.
 
+**CX-1b (Codex, same branch `fix/backend-hygiene`; do before CX-2, findings in REVIEW-005):**
+
+- [ ] F-20: `PoliteHttp` (and any other caller of `http_get`) works against the real allowlist: a test drives the back-test client against a faked `requests.get` and shows the request reaches the allowed host; the same test goes red when the fix is removed
+- [ ] F-21: tests for the empty-allowlist refusal, the config `hosts` validation (empty, duplicate, uppercase, bad DNS name), userinfo and non-443 port, `bad_redirect` (no `Location`) and `redirect_limit` (three hops); mutation checks M4, M7, M8 go red
+- [ ] F-22: confirm the two chlorophyll dataset ids and the host live (`.das` plus one small data request, within the request limits), quote the output, fix the fetcher if the layout differs, and record the new `config_sha256`; if `coastwatch.noaa.gov` still answers 5xx, say so and leave this box open
+
+
 ### 4.2 Other next steps
 
 | ID | Task | Owner | Notes |
@@ -472,3 +479,36 @@ Findings:
 Not tested: Supabase, a scheduler, the API, the land and EEZ masks (cells that ETOPO treats as water but are land are still scored), periods longer than 12 months, the 11 missing dates, daily results, `hit_rate` on real data, the seat's back-test cache and live run.
 
 `QA: 4 findings (C/H/M/L = 0/0/1/3) + 3 info - 216 tests and 10 mutations reproduced by the PM, config hash re-measured - not tested: Supabase, scheduler, API, masks, the seat's live back-test run`
+
+### REVIEW-005 — `fix/backend-hygiene` (CX-1, Codex), `main..d6e860c`, reviewed 2026-11-27 by the PM
+
+Verdict: **do not merge yet; three follow-ups on the same branch (CX-1b in section 4.4).** The branch has 3 commits and
+13 files, all under `backend/` plus `.gitignore` and `TASK.md`; no file outside the item's scope. Method: `git archive`
+of `origin/fix/backend-hygiene` into a scratch folder, suite run, a search for every caller of `http_get`, live checks of
+the dataset ids, and mutation checks on copies (source hashes unchanged afterwards).
+
+| Check | Result | Label |
+| --- | --- | --- |
+| Suite on the branch (no database) | 202 passed, 15 skipped (the skipped ones need PostGIS; not run) | MEASURED 2026-11-27 |
+| `.gitignore`, NOAA-20 wording, `wx_issued_at` wording (contract, README, schema comment) | present; the schema change is a comment only | READ 2026-11-27 |
+| Redirect hardening in `http_get` (https only, no userinfo or odd port, host allowlist per source, at most 2 hops, `allow_redirects=False`) | matches F-9 as written; mutations M1 (host check removed), M5 (`allow_redirects=True`), M6 (scheme check removed) go **red** | MEASURED 2026-11-27 |
+| Mutations M4 (empty allowlist not refused), M7 (config `hosts` validation removed), M8 (userinfo/port check removed) | stay **green**: those three guards have no test | MEASURED 2026-11-27 |
+| New ERDDAP ids `noaacwNPPVIIRSchlaDaily` / `noaacwN20VIIRSchlaDaily` on `coastwatch.noaa.gov` | **could not be confirmed**: that host answered 502 on 4 requests (also its index page); the old ids now return 404 on `coastwatch.pfeg.noaa.gov`; the new ids are not in that server's catalogue search. `jplMURSST41` and `ETOPO_2022_v1_15s` still answer 200 | MEASURED 2026-11-27 |
+
+Findings:
+
+- **F-20 [Medium] The back-test breaks on every live request.** `PoliteHttp` (`backend/backtest/inputs.py:31`) defaults its
+  inner function to `http_get`, which now refuses a call without `allowed_hosts` (`FetchError("bad_config")`). The back-test
+  CLI builds it with no inner function (`backend/backtest/run.py:47`), and `registry.build` only supplies the allowlisted
+  function when no `http` is passed. Reproduced: `PoliteHttp(pause_s=0)("https://coastwatch.pfeg.noaa.gov/erddap/info/index.json", 5)`
+  raises `bad_config`. The tests inject a fake function, so they stay green. Ingest is not affected (it uses `registry.build`
+  without `http`). Actor: anyone who re-runs the back-test online. MEASURED 2026-11-27.
+- **F-21 [Low] Three new guards and two new error codes have no test** (M4, M7, M8 above; `redirect_limit`, `bad_redirect`
+  have no direct test either).
+- **F-22 [Medium, UNVERIFIED] The chlorophyll dataset change is not shown to work.** The report gives no evidence for the new
+  ids or the new host; a new dataset can have a different layout (axes, descending latitude, pixel size), and the fetcher
+  parses by that layout. What would settle it: one `.das` request and one small data request to the new dataset through the
+  fetcher once `coastwatch.noaa.gov` answers, plus a fetcher test fixture taken from that reply. Note also that the area
+  config now has `hosts`, so its `config_sha256` changes (expected, record the new value).
+
+`QA: 3 findings (C/H/M/L = 0/0/2/1) - 3 reproduced (F-20, F-21 mutations; F-22 is UNVERIFIED) - not tested: PostGIS-backed tests (skipped), the live chlorophyll fetch (server 502), the other 4 mutation targets of the redirect loop`
