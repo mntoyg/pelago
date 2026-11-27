@@ -634,3 +634,19 @@ zones are not loaded; the mask removes land and cells outside the EEZ buffer, an
 
 `QA: 2 findings (C/H/M/L = 0/0/0/1) + 1 info - 1 reproduced (F-27) - not tested: the live EEZ fetch, the real Chonburi layer results, a scheduled run`
 
+### REVIEW-008 — `feature/fsi-test-gaps` (AI-2, Claude AIE 01), `1815713..b7a9382`, reviewed 2026-11-27 by the PM
+
+Verdict: **approve for merge.** One commit, 3 files, tests and a mutation log only, no behaviour change (the branch was cut before
+the documentation commit, so a plain diff against today's `main` shows the new docs as deleted; against the merge base the diff
+is 3 files, +97 lines, and a trial merge into `main` is clean).
+
+| Check | Result | Label |
+| --- | --- | --- |
+| Suite without a database | 327 passed, 47 skipped | MEASURED 2026-11-27 |
+| Suite on a throwaway PostGIS (`PELAGO_REQUIRE_DB=1`, container and password file removed afterwards) | **374 passed, 0 skipped** | MEASURED 2026-11-27 |
+| F-26 closed: the "fewer than 3 common cells" skip removed | the new test goes **red** (before: green) | MEASURED 2026-11-27 |
+| F-27 closed: the "no border at all counts as inside the EEZ" branch flipped | the new test goes **red** (before: green); the file also holds a control showing a real border does refuse a cell, so the True comes from that branch | MEASURED 2026-11-27 |
+| Source hashes after the mutations | unchanged | MEASURED 2026-11-27 |
+
+`QA: 0 findings (C/H/M/L) - 0 reproduced - not tested: F-25 (the one-field fetch after the hygiene branch is merged), the three open owner decisions that touch FSI`
+
