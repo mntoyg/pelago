@@ -37,7 +37,7 @@ Items marked **PROPOSED** are the PM's suggestions and are not agreed scope unti
 | TASK-007 | Backend API contract, draft PostGIS schema and service layout (design only) by the first backend seat | Reviewed by the PM, see REVIEW-002. Merged into `main` on 2026-11-26 (fast-forward from `feature/backend-contract` `93b82e0`). Root `.gitignore` now ignores `.env*` and key files; new `.vercelignore` keeps `backend/` and env files out of CLI deploys |
 | TASK-008 | Backend daily ingest for `th-chonburi-coast` by the second backend seat: dry run of the public sources, area config, one fetcher per source behind a swappable interface, aggregation onto the 0.05 degree grid, writer, 101 tests, mutation log | Reviewed by the PM, see REVIEW-003. Merged into `main` on 2026-11-26 (fast-forward from `feature/backend-ingest` `73d2f00`, with the PM's review notes) |
 | TASK-009 | FSI v1 on the server and the first back-test by the AI-engineer seat (Pelago AIE 01): `backend/fsi/`, `backend/backtest/`, strict `fsi` config validation, `.gitattributes` for the config files, 115 more tests, two mutation logs, one report | Reviewed by the PM, see REVIEW-004. Merged into `main` on 2026-11-26 (fast-forward from `feature/backtest` `5e829f5`, which contains `feature/fsi-v1` `baedcde`, plus the PM's review notes) |
-| TASK-010 | Land mask, EEZ mask, sea-state rule and pick step by the mask seat: `backend/masks/`, `backend/pick/`, `backend/compute/` (order mask, fsi, pick), `backend/legal.py`, `backend/seastate.py`, 7 test files, `backend/docs/mask-pick-mutation-log.md`, `land.geojson` (Natural Earth 1:10m, public domain, 3.6 KB, clipped) and `PROVENANCE.md` | **REPORTED, NOT reviewed, NOT merged.** Branch `feature/mask-and-pick` = `3a357a2` on `origin` (MEASURED 2026-11-26 by the PM: `git ls-remote origin` = `3a357a2`; 2 commits, 29 files, all under `backend/`). The PM has not run the tests or the mutation checks. The EEZ layer (Marine Regions, CC BY 4.0) is **not committed** and is fetched at build time by `backend/masks/fetch_eez.py`; the seat's note says the owner chose build-time download. The PM did not see that approval in this chat: the owner should confirm that the Natural Earth and Marine Regions downloads were approved |
+| TASK-010 | Land mask, EEZ mask, sea-state rule and pick step by the mask seat: `backend/masks/`, `backend/pick/`, `backend/compute/` (order mask, fsi, pick), `backend/legal.py`, `backend/seastate.py`, 7 test files, `backend/docs/mask-pick-mutation-log.md`, `land.geojson` (Natural Earth 1:10m, public domain, 3.6 KB, clipped) and `PROVENANCE.md` | **PM review in progress (REVIEW-007): pure-code part reproduced, PostGIS part pending. NOT merged.** Branch `feature/mask-and-pick` = `3a357a2` on `origin` (MEASURED 2026-11-26 by the PM: `git ls-remote origin` = `3a357a2`; 2 commits, 29 files, all under `backend/`). The PM has not run the tests or the mutation checks. The EEZ layer (Marine Regions, CC BY 4.0) is **not committed** and is fetched at build time by `backend/masks/fetch_eez.py`; the seat's note says the owner chose build-time download. The PM did not see that approval in this chat: the owner should confirm that the Natural Earth and Marine Regions downloads were approved |
 | TASK-011 | Codex work package written into this file (section 4.3) and the mask work put on hold, by the PM | MEASURED 2026-11-26: `main` = `origin/main` = `34ca635` |
 
 ## 4. Next up
@@ -571,3 +571,38 @@ a cell's gradient may rest on few pixels (7 of 136 cells under half); F-25 [Low,
 fetched again to confirm it still works. PM addition: **F-26 [Low]** the `< 3 common cells` skip in `pair_metrics` has no test.
 
 `QA: 4 findings (C/H/M/L = 0/0/1/3) - 1 reproduced (F-26; F-23 to F-25 are the seat's, REPORTED) - not tested: the live fetches and the seat's offline re-run (cache not in the repository), PostGIS tests, the front-end of any of this`
+
+### REVIEW-007 — `feature/mask-and-pick` (TASK-010, mask seat), `a861e8d..3a357a2`, reviewed 2026-11-27 by the PM (first part)
+
+Verdict so far: **no defect found in the part I could run; do not merge until the PostGIS part is run.** The branch is 2 commits,
+28 files, all under `backend/` (new `masks/`, `pick/`, `compute/`, `legal.py`, `seastate.py`, 7 test files, one mutation log, one
+small land layer). A trial merge into `main` (`git merge-tree`) has no conflicts. Method: `git archive` into a scratch folder,
+suite run, 15 mutations on copies (source hashes unchanged afterwards), the layer hash and both licence statements re-checked
+against the live pages.
+
+| Check | Result | Label |
+| --- | --- | --- |
+| Suite without a database | 306 passed, 43 skipped (the skipped ones are the real-PostGIS tests) | MEASURED 2026-11-27 |
+| Mutations on `legal.py` (land may be eligible; EEZ not required; a forbidden flag no longer blocks; red sea no longer blocks; missing or stale forecast no longer blocks; unknown layers always allowed; flag coercion allowed) | 7 of 7 **red**, each in a test that names the cause | MEASURED 2026-11-27 |
+| Mutations on `pick/select.py` (spacing `>` instead of `>=`; spacing check removed; bbox check removed; non-finite FSI kept; duplicate cell ids kept; limit above 5) | 6 of 6 **red** | MEASURED 2026-11-27 |
+| Mutations on `seastate.py` (red wave threshold `>`; a missing partner value softens danger; stale forecast treated as fresh) | 3 of 3 **red** | MEASURED 2026-11-27 |
+| `land.geojson` sha256 and size | `1b8d828b...ffe99`, 3,621 bytes: equals `PROVENANCE.md` | MEASURED 2026-11-27 |
+| Licence statements: Natural Earth "in the public domain"; Marine Regions "licensed under CC-BY since Maritime Boundaries version 11 (2019)", asks users "not to make our products available for download elsewhere", "no legal value" | the pages say so, so the choice not to commit the EEZ layer and to fetch it at build time is consistent with the provider's request | MEASURED 2026-11-27 |
+| Real PostGIS tests (the "no recommended spot in a forbidden cell" foreign-key tests, idempotent pick, mask run) | **not run**: Docker Desktop was not running (`dockerDesktopLinuxEngine` pipe missing) | NOT TESTED |
+| `masks/geo.py`, `masks/layers.py`, `fetch_eez.py` (point in polygon, EEZ buffer, holes treated as coast, redirect refusal) | read only the `legal.py`, `select.py`, `seastate.py` code; the geometry code has no mutation checks from me | NOT TESTED |
+
+Notes for the owner and the next step (not defects):
+
+- The sea-state rule uses `wx_issued_at`, which is now the retrieval time (REVIEW-005, F-10), so "stale forecast" means "the data
+  we fetched is old", not "the forecast model run is old". That is a fair freshness proxy; say it that way in the demo.
+- A cell with a missing wave or wind value is "yellow, not eligible" (conservative); danger is never softened by a missing
+  partner value (mutation Z2 proves the test exists).
+- The EEZ layer is fetched at build time from Marine Regions, so a fresh machine needs network access and the provider can
+  change the data; the mask run stores the layer hash in `job_runs.detail`.
+
+To finish this review: start Docker Desktop, then run the full suite with `PELAGO_REQUIRE_DB=1` against a throwaway PostGIS
+container, plus 3 to 4 mutations of the database guards (the foreign key to an eligible mask row, the CHECK on
+`cell_mask_daily`) and 2 to 3 mutations of the geometry code.
+
+`QA: 0 findings (C/H/M/L) - 0 reproduced - not tested: the 43 PostGIS tests, the geometry modules, the live EEZ fetch`
+
