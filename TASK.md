@@ -260,9 +260,9 @@ edit `backend/backtest/inputs.py` or `backend/backtest/run.py`: Codex fixes the 
 rebase on `main` after that merge before you re-run the live parts. Numbers only, no accuracy claim, default weights
 unchanged.
 
-- [ ] F-16: check the SST temperature-front input on one real SST field for the area (one small ERDDAP request on `jplMURSST41`, within the request limits of the back-test brief): gradient statistics, grid-edge and land-adjacent behaviour; say plainly if the front looks wrong
-- [ ] Open question 13: with the existing harness measure week-to-week agreement for (a) today's weights, (b) a lower front weight, (c) the front smoothed over several days, same metrics as REVIEW-004 (Spearman, top-20% overlap vs random); the owner decides, the config default is not changed
-- [ ] The report states what each result does and does not show; chlorophyll-empty behaviour (open question 12) is shown unchanged
+- [x] F-16: check the SST temperature-front input on one real SST field for the area (one small ERDDAP request on `jplMURSST41`, within the request limits of the back-test brief): gradient statistics, grid-edge and land-adjacent behaviour; say plainly if the front looks wrong (`b2a07c5`, report `f462aba`)
+- [x] Open question 13: with the existing harness measure week-to-week agreement for (a) today's weights, (b) a lower front weight, (c) the front smoothed over several days, same metrics as REVIEW-004 (Spearman, top-20% overlap vs random); the owner decides, the config default is not changed (`b2a07c5`, report `f462aba`)
+- [x] The report states what each result does and does not show; chlorophyll-empty behaviour (open question 12) is shown unchanged (`f462aba`)
 
 **FE-1 (Claude SWE 01 = Pelago SWE 01; branch `feature/frontend-api-adapter`; independent of Codex's API)**
 
