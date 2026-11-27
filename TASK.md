@@ -666,3 +666,13 @@ Verdict: **F-20/F-21/F-22 pass PM verification. The existing work branch also co
 | Scope and untested areas | no PostGIS/database run; no numeric non-NaN chlorophyll value asserted; no frontend/browser test | MEASURED / explicit limitations |
 
 `QA: 0 findings (C/H/M/L = 0/0/0/0) - 4 mutations reproduced - not tested: PostGIS-backed tests, a non-NaN live chlorophyll value, browser/frontend behavior`
+
+#### REVIEW-009 follow-up — live PostGIS test run, 2026-11-27
+
+| Check | Result | Evidence |
+| --- | --- | --- |
+| Full test suite with PostGIS required | **385 passed, 0 skipped** in 68.87 s | MEASURED on branch tip `c1898e1601320bec85d1febe68cc39ebfff3e844`; `PELAGO_REQUIRE_DB=1`; disposable `postgis/postgis:16-3.7` container, bound to `127.0.0.1:55439`; the suite's per-test fixtures created and dropped their own databases. PostgreSQL reported 16.16. `psycopg 3.3.9` came from `backend/.venv`; pytest 8.3.4, numpy 1.26.4 and requests 2.32.5 came from system Python. |
+| Docker access and cleanup | Container created for this run and removed; no container with its test name remained | MEASURED via elevated Docker CLI. The un-elevated process still receives `permission denied` on the Docker Desktop named pipe; no global Docker ACL was changed. |
+| Scope remaining | no non-NaN NOAA chlorophyll value asserted; no frontend/browser test; Supabase roles/RLS not tested | MEASURED / explicit limitations |
+
+`QA: 0 findings (C/H/M/L = 0/0/0/0) - 4 mutations reproduced - not tested: a non-NaN live chlorophyll value, frontend/browser behavior, Supabase roles/RLS`
